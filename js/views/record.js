@@ -35,7 +35,7 @@ export function renderRecord(app, { record, saved = false }) {
     const result = await saveVoid(app.store, record, reasonInput.value);
     event.target.disabled = false;
     if (result.ok) {
-      app.show('records');
+      app.show('records', { voided: record });
       return;
     }
     status.className = 'save-status failed';

@@ -5,6 +5,7 @@ import {
   BOWEL_CARE_STATUS, CONCERNS, labelFor,
 } from './bathroom.js';
 import { QUESTIONS, SUMMARY_TYPES, TEXT_LABELS, BEHAVIORS } from './handoff.js';
+import { formatDateTime } from './time.js';
 
 export function entryTitle(record) {
   return record.summary_type
@@ -52,4 +53,10 @@ function handoffRows(record, name) {
 // [label, value] pairs for a record's answers; a falsy value means "not asked".
 export function answerRows(record, name) {
   return record.summary_type ? handoffRows(record, name) : bathroomRows(record, name);
+}
+
+// Records says this after a void, since the entry leaves the list (review
+// backlog: voiding used to land on Records with no word of what happened).
+export function voidedNotice(record) {
+  return `Voided: ${entryTitle(record)}, ${formatDateTime(record.occurred_at)}. It's kept on this device; find it with Show voided under Filters.`;
 }

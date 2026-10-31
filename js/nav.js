@@ -4,11 +4,22 @@
 // Pure functions; main.js does the history calls.
 import { storeFor } from './entries.js';
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+// Export's window: two local dates and a place code. Dates and a code, never
+// record contents. Null unless both dates are well formed.
+export function windowParams({ from, to, site } = {}) {
+  if (!DAY.test(from ?? '') || !DAY.test(to ?? '')) return null;
+  return { from, to, site: typeof site === 'string' && /^[a-z_]{1,40}$/.test(site) ? site : null };
+}
+
 // What a history entry keeps of a screen's params. Transient flags like
 // `saved` are dropped: going back to a screen doesn't repeat its message.
 export function entryFor(view, params = {}) {
   const kept = {};
   if (params.type) kept.type = params.type;
+  const window = windowParams(params);
+  if (window) Object.assign(kept, window);
   if (params.verifyOnly) kept.verifyOnly = true;
   if (params.pickDate) kept.pickDate = true;
   if (params.record) {

@@ -2,7 +2,7 @@ import { h, ask } from './dom.js';
 import { openDb, createStore, deleteDb } from './db.js';
 import { storageRiskLine } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
-import { entryFor, planNavigation } from './nav.js';
+import { entryFor, planNavigation, windowParams } from './nav.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
@@ -185,7 +185,7 @@ const RECORD_STORES = new Set(['bathroom_events', 'handoffs']);
 // A history step back into params a screen can draw. Null when its entry is
 // gone (voided entries stay; cleared or demo data can go).
 async function paramsFrom(kept = {}) {
-  const params = {};
+  const params = { ...windowParams(kept) };
   if (kept.type) params.type = kept.type;
   if (kept.verifyOnly) params.verifyOnly = true;
   if (kept.pickDate) params.pickDate = true;

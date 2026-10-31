@@ -1,5 +1,5 @@
 import { h, ask, icon } from '../dom.js';
-import { entryTitle } from '../record-text.js';
+import { entryTitle, voidedNotice } from '../record-text.js';
 import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary } from '../entries.js';
 import { siteOptions } from '../settings.js';
 import { formatTime, dayHeading } from '../time.js';
@@ -117,7 +117,7 @@ function recordRow(record, day, siteLabel, open) {
     record.handoff_note ? preview('note', 'Note', record.handoff_note) : null));
 }
 
-export async function renderRecords(app) {
+export async function renderRecords(app, { voided = null } = {}) {
   const all = [
     ...await app.store.getAll('bathroom_events'),
     ...await app.store.getAll('handoffs'),
@@ -128,6 +128,8 @@ export async function renderRecords(app) {
 
   return h('section', { class: 'records' },
     h('h1', { class: 'form-title' }, icon('records', 30), 'Records'),
+    // Transient: history steps drop it, so going back doesn't repeat it.
+    voided ? h('p', { class: 'voided-notice', role: 'status' }, icon('void'), ' ', voidedNotice(voided)) : null,
     isDevHost(location.hostname) ? devTools(app, all.length) : null,
     filterBar(app, filters),
     h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${all.length} ${all.length === 1 ? 'entry' : 'entries'} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),

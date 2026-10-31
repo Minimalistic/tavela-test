@@ -600,6 +600,8 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .voided-tag, .voided-banner strong { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; font-weight: 700; }
 .voided-tag { border: 1px solid var(--ink-soft); border-radius: 6px; padding: 1px 6px; margin-right: 8px; }
 .voided-banner { border: 2px dashed var(--ink-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 20px; }
+.voided-notice { border: 2px dashed var(--ink-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; font-weight: 600; }
+.voided-notice .icon { vertical-align: -4px; }
 .record-positive .icon, .record-note .icon { margin-right: 2px; }
 
 .saved-inline { font-weight: 700; color: var(--green); margin: 0 0 8px; }
