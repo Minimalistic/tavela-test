@@ -3,6 +3,7 @@ import { SUMMARY_TYPES } from '../handoff.js';
 import { handoffIcon } from '../areas.js';
 import { lastLogged, doneToday } from '../entries.js';
 import { formatTime, timeAgo, isSameLocalDay } from '../time.js';
+import { backupDue, backupReminderText } from '../backup-log.js';
 
 // Bathroom Check-In is the anytime capture, so it leads; the two Updates are
 // once-a-day handoffs and share one tinted panel, rows joined in one card, so
@@ -33,7 +34,19 @@ export async function renderHome(app) {
   const last = lastLogged(events);
   const lastLine = last ? h('p', { class: 'home-last' }, lastLoggedText(last)) : null;
   const renderedAt = new Date();
+  // SPEC §6 reminder: a plain line, not a live region, so it's read once in
+  // order instead of announced on every visit. Never in demo mode.
+  const due = app.demo ? { due: false } : backupDue({
+    lastBackupAt: await app.store.getMeta('last_backup_at'), entryCount: events.length + handoffs.length, now: renderedAt,
+  });
+  const reminder = due.due
+    ? h('div', { class: 'backup-reminder area-backup' },
+      h('p', {}, icon('backup', 20), ' ', backupReminderText(due)),
+      h('button', { type: 'button', class: 'btn small', onclick: () => app.show('backup-create') }, 'Back up now'))
+    : null;
   const home = h('section', { class: 'home' },
+    // Screen readers navigate by headings; Home's big buttons speak for themselves visually.
+    h('h1', { class: 'visually-hidden' }, 'Home'),
     h('div', { class: 'home-main' },
       h('div', { class: 'home-checkin' }, tile({
         // A non-breaking hyphen (U+2011) keeps "Check-In" whole on a phone.
@@ -44,7 +57,9 @@ export async function renderHome(app) {
         class: 'home-handoffs area-handoff', role: 'group',
         'aria-labelledby': 'handoffs-label', 'aria-describedby': 'handoffs-sub',
       },
-        h('div', { class: 'home-group-head' },
+        // The group already speaks its name and description, so the visible
+        // head is hidden from screen readers (VoiceOver read "Handoffs" twice).
+        h('div', { class: 'home-group-head', 'aria-hidden': 'true' },
           h('p', { class: 'home-group-label', id: 'handoffs-label' }, icon('handoffs', 20), ' Handoffs'),
           h('p', { class: 'home-group-sub', id: 'handoffs-sub' }, 'When care changes hands')),
         h('div', { class: 'home-handoff-list' },
@@ -57,6 +72,7 @@ export async function renderHome(app) {
             });
           })))),
     h('div', { class: 'home-secondary' },
+      reminder,
       h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('reports') }, icon('reports'), ' Reports & Records'),
       // Hidden in demo mode, so demo data can't leave in a backup (SPEC §16).
       app.demo ? null : h('button', { type: 'button', class: 'btn secondary area-backup', onclick: () => app.show('backup') }, icon('backup'), ' Backup & Restore')));

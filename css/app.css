@@ -4,6 +4,9 @@
   --sage: #628772;
   --sage-light: #aebe9d;
   --sun: #eec769;
+  /* Focus ring: dark green is about 10:1 on paper and the tints (WCAG 1.4.11
+     needs 3:1); sun yellow was 1.59:1. Every surface the ring sits on is light. */
+  --focus: var(--green);
   --cream: #f6f3ea;
   --paper: #fffdf8;
   --ink: #1f2a28;
@@ -95,7 +98,7 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
   cursor: pointer;
   touch-action: manipulation;
 }
-.brand:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.brand:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .brand img { border-radius: 9px; }
 .wordmark { font: 700 1.6rem/1 var(--font); letter-spacing: -0.01em; }
 .wordmark .lead { color: var(--green); }
@@ -122,7 +125,7 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .btn.secondary { border-width: 1px; font-weight: 500; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:focus-visible, .tile:focus-within, .record-row:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
-  outline: 3px solid var(--sun);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -154,7 +157,7 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
   touch-action: manipulation;
 }
 .home-tile .icon { color: var(--area); }
-.home-tile:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.home-tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .home-tile:active { background: var(--area-tint); }
 .home-tile-big { min-height: 160px; background: var(--area-tint); }
 .home-tile-text { display: flex; flex-direction: column; gap: 2px; }
@@ -209,6 +212,14 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 }
 .home-secondary .btn .icon { vertical-align: -4px; }
 .home-secondary .area-backup { color: var(--area); border-color: var(--area); }
+/* Backup reminder (SPEC §6): calm, never red, never blocking. */
+.home-secondary .backup-reminder {
+  flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 10px 14px; border: 1px solid var(--line); border-left: 4px solid var(--area);
+  border-radius: 10px; background: var(--paper); color: var(--ink);
+}
+.backup-reminder p { margin: 0; flex: 1 1 14rem; font-weight: 600; }
+.backup-reminder p .icon { vertical-align: -4px; color: var(--area); }
 
 /* Form and detail headers carry their area's icon and colour. */
 .form-title { display: flex; align-items: center; gap: 10px; color: var(--area, var(--green)); }
@@ -331,7 +342,7 @@ textarea { width: 100%; resize: vertical; }
   cursor: pointer;
 }
 .tray-btn.has { color: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
-.tray-btn:focus-visible, .link:focus-visible, .toast button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.tray-btn:focus-visible, .link:focus-visible, .toast button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .link {
   min-height: 44px;
   padding: 0 4px;
@@ -377,6 +388,8 @@ dialog.sheet::backdrop { background: rgba(31, 42, 40, 0.2); }
 
 /* "Cleared · Undo" after Start over. */
 .toast {
+  /* Dark surface: the ring stays sun yellow here (about 9:1 on ink). */
+  --focus: var(--sun);
   position: fixed;
   left: 50%;
   bottom: calc(150px + env(safe-area-inset-bottom));
@@ -753,7 +766,7 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 .card-head .chart-title { margin: 0; }
 .card-head .hint { margin: 0; }
 .timeline { position: relative; cursor: pointer; border-radius: 6px; }
-.timeline:focus-visible { outline: 3px solid var(--sun); outline-offset: 4px; }
+.timeline:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .track { padding: 6px 0 4px; border-top: 1px solid var(--chart-grid); }
 .track:first-child { border-top: 0; }
 .track[hidden] { display: none; }
@@ -867,7 +880,7 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 .scale { display: flex; gap: 3px; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .seg { position: relative; flex: 1 1 0; min-width: 0; cursor: pointer; }
 .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; pointer-events: none; }
-.seg:focus-within { outline: 3px solid var(--sun); outline-offset: 2px; border-radius: 8px; }
+.seg:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
 .seg-text {
   display: flex;
   align-items: center;

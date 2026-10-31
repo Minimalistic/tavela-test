@@ -163,11 +163,9 @@ export async function renderReports(app) {
 
   const n = counts.entries.length;
   if (n === 0) {
+    // No logging shortcut here: entries start from Home (Jason, 10-31).
     return h('section', { class: 'reports' }, header,
-      h('p', { class: 'report-empty', role: 'status' }, emptyReportText(records.length)),
-      records.length === 0
-        ? h('button', { type: 'button', class: 'btn primary area-bathroom', onclick: () => app.show('checkin') }, icon('checkin'), ' Bathroom Check\u2011In')
-        : null);
+      h('p', { class: 'report-empty', role: 'status' }, emptyReportText(records.length)));
   }
   return h('section', { class: 'reports' }, header,
     h('p', { class: 'report-caveat' }, caveatText(counts)),
