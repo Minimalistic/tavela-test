@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Full-bleed square: iPadOS rounds the corners itself. -->
+  <rect width="1024" height="1024" fill="#e2e0db"/>
+  <defs>
+    <clipPath id="above-horizon">
+      <path d="M0,0 H1024 V600 L700,600 C620,606 540,600 471,586 C430,577 380,560 300,560 L0,560 Z"/>
+    </clipPath>
+  </defs>
+  <g fill="none" stroke="#414140" stroke-width="44" stroke-linecap="round">
+    <path d="M512,312 V214"/>
+    <path d="M662,361 L720,284"/>
+    <path d="M362,361 L304,284"/>
+    <path d="M748,485 L840,455"/>
+    <path d="M276,485 L184,455"/>
+  </g>
+  <circle cx="512" cy="562" r="182" fill="#414140" clip-path="url(#above-horizon)"/>
+  <!-- Back wave first; the front wave's green outline cuts a clean gap between them. -->
+  <path fill="#414140" d="M352,724 C410,726 455,722 500,706 C560,680 615,644 688,628 C772,612 870,606 902,618 C912,640 868,700 790,756 C724,802 652,822 598,822 C512,822 430,790 352,724 Z"/>
+  <path fill="#414140" stroke="#e2e0db" stroke-width="18" paint-order="stroke" d="M122,640 C150,598 228,590 286,592 C360,594 420,612 474,622 C528,632 574,648 618,668 C556,706 474,732 408,734 C332,738 246,728 186,706 C144,690 112,664 122,640 Z"/>
+</svg>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0d5049">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tavela">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="robots" content="noindex">
+  <title>Tavela</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <button type="button" id="brand-home" class="brand" aria-label="Tavela, go to Home">
+      <img src="icons/icon.svg" alt="" width="40" height="40">
+      <span class="wordmark" aria-hidden="true"><span class="lead">ta</span><span class="tail">vela</span></span>
+    </button>
+    <button type="button" id="home-link" class="btn small" hidden>Home</button>
+  </header>
+  <p id="test-build" class="test-build" hidden>Test build · made-up people only · everything stays on this device.</p>
+  <aside id="demo-banner" class="demo-banner" aria-label="Demo mode" hidden>
+    <p><strong>DEMO DATA — FICTIONAL</strong> <span class="demo-banner-sub">Nothing here is real or saved to the real records.</span></p>
+    <button type="button" id="leave-demo" class="btn small">Leave demo</button>
+  </aside>
+  <main id="view" tabindex="-1"></main>
+  <footer class="status"><p id="status-line">Stored on this device</p></footer>
+</body>
+</html>
