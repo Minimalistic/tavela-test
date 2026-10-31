@@ -19,7 +19,7 @@ const tile = ({ area, iconName, label, sub, done = null, onclick, big = false })
     icon(iconName, big ? 44 : 30),
     h('span', { class: 'home-tile-text' },
       h('span', { class: 'home-tile-label' }, label),
-      h('span', { class: 'home-tile-sub' }, sub),
+      sub ? h('span', { class: 'home-tile-sub' }, sub) : null,
       // The save icon is Lucide's check.
       done ? h('span', { class: 'home-tile-done' }, icon('save', 18), ` Done today · ${done}`) : null));
 
@@ -50,7 +50,7 @@ export async function renderHome(app) {
     h('div', { class: 'home-main' },
       h('div', { class: 'home-checkin' }, tile({
         // A non-breaking hyphen (U+2011) keeps "Check-In" whole on a phone.
-        area: 'bathroom', iconName: 'checkin', label: 'Bathroom Check\u2011In', sub: 'Any time, as it happens', big: true,
+        area: 'bathroom', iconName: 'checkin', label: 'Bathroom Check\u2011In', big: true,
         onclick: () => app.show('checkin'),
       }), lastLine),
       h('div', {
