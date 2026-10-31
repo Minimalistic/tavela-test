@@ -1,5 +1,6 @@
 import { h, ask } from './dom.js';
 import { openDb, createStore, deleteDb } from './db.js';
+import { storageRiskLine } from './storage-risk.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
@@ -131,6 +132,7 @@ const app = {
         h('button', { type: 'button', class: 'btn primary', onclick: () => app.show('home') }, 'Home'));
     }
     main.replaceChildren(view);
+    trackCovers();
     document.getElementById('home-link').hidden = name === 'home';
     window.scrollTo(0, 0);
     // preventScroll: focusing <main> would scroll it to the top edge, under
@@ -138,6 +140,28 @@ const app = {
     main.focus({ preventScroll: true });
   },
 };
+
+// Sticky bars (the demo banner, Reports' pinned line, a form's Save bar) sit
+// over the page. Their heights feed scroll-padding, so a field scrolled or
+// tabbed into view lands clear of them (WCAG 2.4.11). Measured, because each
+// wraps differently by screen width and the Save bar grows as it fills.
+const coverObserver = new ResizeObserver(() => updateCovers());
+
+function updateCovers() {
+  const height = (el) => (el && !el.hidden ? el.offsetHeight : 0);
+  const top = height(document.getElementById('demo-banner')) + height(document.querySelector('.report-bar'));
+  const root = document.documentElement.style;
+  root.setProperty('--cover-top', `${top}px`);
+  root.setProperty('--cover-bottom', `${height(document.querySelector('.save-bar'))}px`);
+}
+
+function trackCovers() {
+  coverObserver.disconnect();
+  for (const el of [document.getElementById('demo-banner'), document.querySelector('.report-bar'), document.querySelector('.save-bar')]) {
+    if (el) coverObserver.observe(el);
+  }
+  updateCovers();
+}
 
 async function openDemoStore() {
   const db = await openDb(DEMO_DB);
@@ -158,7 +182,24 @@ function useReal() {
   document.getElementById('demo-banner').hidden = true;
 }
 
+// Read fresh each time: adding to the Home Screen opens a new window, but a
+// grant can arrive later in the same one.
+async function renderStorageRisk() {
+  const installed = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  let persisted = null;
+  try {
+    persisted = (await navigator.storage?.persisted?.()) ?? null;
+  } catch (err) {
+    console.warn('Tavela: storage.persisted() failed:', err?.name ?? 'unknown error');
+  }
+  const line = storageRiskLine({ installed, persisted, demo: app.demo });
+  const el = document.getElementById('storage-risk');
+  el.textContent = line ?? '';
+  el.hidden = !line;
+}
+
 async function renderFooter() {
+  await renderStorageRisk();
   if (app.demo) {
     document.getElementById('status-line').textContent = 'Demo data · kept apart from the real entries on this device';
     return;
@@ -189,7 +230,7 @@ async function boot() {
     console.error('Tavela: leaving demo failed:', err?.name ?? 'unknown error');
   }));
   try {
-    app.realStore = createStore(await openDb());
+    app.realStore = createStore(await openDb(), () => openDb());
     app.store = app.realStore;
   } catch (err) {
     console.error('Tavela: could not open storage:', err?.name ?? 'unknown error');

@@ -2,7 +2,7 @@ import { h, icon } from '../dom.js';
 import { SUMMARY_TYPES } from '../handoff.js';
 import { handoffIcon } from '../areas.js';
 import { lastLogged, doneToday } from '../entries.js';
-import { formatTime, timeAgo } from '../time.js';
+import { formatTime, timeAgo, isSameLocalDay } from '../time.js';
 
 // Bathroom Check-In is the anytime capture, so it leads; the two Updates are
 // once-a-day handoffs and share one tinted panel, rows joined in one card, so
@@ -30,14 +30,8 @@ export async function renderHome(app) {
     return record ? `Done today · ${formatTime(record.occurred_at)}` : null;
   };
   const lastLine = last ? h('p', { class: 'home-last' }, lastLoggedText(last)) : null;
-  // Kept current while Home is open; stops once Home is replaced.
-  if (lastLine) {
-    const tick = setInterval(() => {
-      if (!lastLine.isConnected) clearInterval(tick);
-      else lastLine.textContent = lastLoggedText(last);
-    }, 30000);
-  }
-  return h('section', { class: 'home' },
+  const renderedAt = new Date();
+  const home = h('section', { class: 'home' },
     h('div', { class: 'home-main' },
       h('div', { class: 'home-checkin' }, tile({
         // A non-breaking hyphen (U+2011) keeps "Check-In" whole on a phone.
@@ -61,4 +55,33 @@ export async function renderHome(app) {
       h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('reports') }, icon('reports'), ' Reports & Records'),
       // Hidden in demo mode, so demo data can't leave in a backup (SPEC §16).
       app.demo ? null : h('button', { type: 'button', class: 'btn secondary area-backup', onclick: () => app.show('backup') }, icon('backup'), ' Backup & Restore')));
+  keepCurrent(app, home, lastLine, last, renderedAt);
+  return home;
+}
+
+// A shared iPad can sit on Home overnight, so "Done today" must not carry
+// yesterday's Updates into the morning. The timer pauses while the device
+// sleeps and catches the new day on wake; coming back to the app redraws at
+// once. Both stop once Home is replaced. A dialog that is up is left alone;
+// the next tick tries again.
+function keepCurrent(app, home, lastLine, last, renderedAt) {
+  const stop = () => {
+    clearInterval(tick);
+    document.removeEventListener('visibilitychange', onVisible);
+  };
+  const redraw = () => {
+    if (document.querySelector('dialog[open]')) return;
+    stop();
+    app.show('home');
+  };
+  const tick = setInterval(() => {
+    if (!home.isConnected) stop();
+    else if (!isSameLocalDay(renderedAt, new Date())) redraw();
+    else if (lastLine) lastLine.textContent = lastLoggedText(last);
+  }, 30000);
+  const onVisible = () => {
+    if (!home.isConnected) stop();
+    else if (document.visibilityState === 'visible') redraw();
+  };
+  document.addEventListener('visibilitychange', onVisible);
 }

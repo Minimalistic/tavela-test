@@ -43,49 +43,93 @@ function finish(tx, result) {
   });
 }
 
-export function createStore(db) {
+// Errors a dropped connection gives. WebKit can lose an IndexedDB connection
+// while the device sleeps ("Connection to Indexed Database server lost"):
+// transaction() then throws InvalidStateError, or the transaction aborts with
+// UnknownError, and every later call fails the same way.
+export const CONNECTION_LOST = new Set(['InvalidStateError', 'UnknownError']);
+
+// reopen, when given, opens the same database again. After a dropped
+// connection the store reopens once and runs the operation again. That is safe
+// because a failed transaction changes nothing and puts are keyed by id, so a
+// retry can't duplicate. The demo store gets no reopen: another window's
+// "Leave demo" closes it on purpose, and reopening would bring it back.
+export function createStore(firstDb, reopen = null) {
+  let db = firstDb;
+  let closed = false;
+  let reopening = null;
+
+  async function run(operation) {
+    const failedOn = db;
+    try {
+      return await operation(db);
+    } catch (err) {
+      if (!reopen || closed || !CONNECTION_LOST.has(err?.name)) throw err;
+      console.warn('Tavela: storage connection lost, reopening:', err.name);
+      // Operations failing together share one reopen.
+      if (db === failedOn) {
+        reopening ??= reopen().then((fresh) => {
+          try { failedOn.close(); } catch { /* already gone */ }
+          db = fresh;
+        }).finally(() => { reopening = null; });
+        await reopening;
+      }
+      return operation(db);
+    }
+  }
+
   return {
     put(storeName, value) {
-      const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
-      tx.objectStore(storeName).put(value);
-      return finish(tx);
+      return run((conn) => {
+        const tx = conn.transaction(storeName, 'readwrite', { durability: 'strict' });
+        tx.objectStore(storeName).put(value);
+        return finish(tx);
+      });
     },
     get(storeName, key) {
-      const tx = db.transaction(storeName, 'readonly');
-      return finish(tx, tx.objectStore(storeName).get(key));
+      return run((conn) => {
+        const tx = conn.transaction(storeName, 'readonly');
+        return finish(tx, tx.objectStore(storeName).get(key));
+      });
     },
     getAll(storeName) {
-      const tx = db.transaction(storeName, 'readonly');
-      return finish(tx, tx.objectStore(storeName).getAll());
+      return run((conn) => {
+        const tx = conn.transaction(storeName, 'readonly');
+        return finish(tx, tx.objectStore(storeName).getAll());
+      });
     },
     // One transaction, so a clear either fully happens or not at all.
     clearAll() {
-      const names = [...db.objectStoreNames];
-      const tx = db.transaction(names, 'readwrite', { durability: 'strict' });
-      for (const name of names) tx.objectStore(name).clear();
-      return finish(tx);
+      return run((conn) => {
+        const names = [...conn.objectStoreNames];
+        const tx = conn.transaction(names, 'readwrite', { durability: 'strict' });
+        for (const name of names) tx.objectStore(name).clear();
+        return finish(tx);
+      });
     },
     // Restore and migrations: every record and meta change in one transaction,
     // so a failure partway (a full disk, a bad record) leaves nothing changed.
     // replace clears both record stores first; other meta keys are kept.
     writeAll({ replace, bathroom_events: events, handoffs, meta }) {
-      const tx = db.transaction(['bathroom_events', 'handoffs', 'meta'], 'readwrite', { durability: 'strict' });
-      const done = finish(tx);
-      try {
-        if (replace) {
-          tx.objectStore('bathroom_events').clear();
-          tx.objectStore('handoffs').clear();
+      return run((conn) => {
+        const tx = conn.transaction(['bathroom_events', 'handoffs', 'meta'], 'readwrite', { durability: 'strict' });
+        const done = finish(tx);
+        try {
+          if (replace) {
+            tx.objectStore('bathroom_events').clear();
+            tx.objectStore('handoffs').clear();
+          }
+          for (const record of events) tx.objectStore('bathroom_events').put(record);
+          for (const record of handoffs) tx.objectStore('handoffs').put(record);
+          for (const [key, value] of Object.entries(meta)) tx.objectStore('meta').put({ key, value });
+        } catch (err) {
+          // put() throws synchronously on a bad record; abort undoes the clear.
+          tx.abort();
+          done.catch(() => {});
+          return Promise.reject(err);
         }
-        for (const record of events) tx.objectStore('bathroom_events').put(record);
-        for (const record of handoffs) tx.objectStore('handoffs').put(record);
-        for (const [key, value] of Object.entries(meta)) tx.objectStore('meta').put({ key, value });
-      } catch (err) {
-        // put() throws synchronously on a bad record; abort undoes the clear.
-        tx.abort();
-        done.catch(() => {});
-        return Promise.reject(err);
-      }
-      return done;
+        return done;
+      });
     },
     async getMeta(key) {
       return (await this.get('meta', key))?.value ?? null;
@@ -94,6 +138,7 @@ export function createStore(db) {
       return this.put('meta', { key, value });
     },
     close() {
+      closed = true;
       db.close();
     },
   };

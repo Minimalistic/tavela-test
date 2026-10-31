@@ -26,6 +26,11 @@ export function localDate(iso) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+// Whether two instants fall on the same device-local calendar date.
+export function isSameLocalDay(a, b) {
+  return localDate(a) === localDate(b);
+}
+
 export function isFutureTime(occurredAt, now = new Date()) {
   const graceMs = 2 * 60 * 1000;
   return Date.parse(occurredAt) > now.getTime() + graceMs;

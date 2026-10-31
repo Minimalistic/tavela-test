@@ -1,6 +1,6 @@
 // Rules shared by bathroom events and handoffs: which store a record lives in,
 // voiding, and the Records filter (docs/SPEC.md §9). Pure functions.
-import { localDate } from './time.js';
+import { localDate, isFutureTime } from './time.js';
 
 export const ENTRY_TYPES = [
   { code: 'bathroom', label: 'Bathroom Check-In' },
@@ -41,9 +41,13 @@ export function filterEntries(records, { from = null, to = null, site = null, ty
     .sort(byOccurredDesc);
 }
 
-// Home's "Last logged" line: the newest check-in still standing, or null.
-export function lastLogged(events) {
-  return events.filter((record) => !record.voided_at).sort(byOccurredDesc)[0] ?? null;
+// Home's "Last logged" line: the newest check-in still standing, or null. A
+// mistyped future time is skipped, as the BM gap does, so it can't pose as
+// today's latest and hide the real one.
+export function lastLogged(events, now = new Date()) {
+  return events
+    .filter((record) => !record.voided_at && !isFutureTime(record.occurred_at, now))
+    .sort(byOccurredDesc)[0] ?? null;
 }
 
 // Home's "Done today" line: today's (device-local) Update of this type that

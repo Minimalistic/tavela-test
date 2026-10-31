@@ -2,9 +2,14 @@ import * as bathroom from './bathroom.js';
 import * as handoff from './handoff.js';
 import { storeFor, voidRecord } from './entries.js';
 import { toOffsetIso } from './time.js';
+import { CONNECTION_LOST } from './db.js';
 
 export const NOT_SAVED = 'Not saved. Your entry is still here. Try Save again.';
 export const NOT_VOIDED = 'Not saved. The entry was not voided. Try again.';
+// The store already reopened once and failed again, so Save won't work until
+// the app restarts. Closing loses the form, hence "note it down".
+export const STORAGE_LOST = 'Not saved. Tavela lost its connection to storage on this device. ' +
+  'Your entry is still here: note it down, then close Tavela fully and open it again.';
 
 // "Saved" only after the store confirms a durable write (SPEC §2.4). Drafts and
 // records are never mutated, so a failure leaves the form, and the stored
@@ -17,7 +22,7 @@ async function write(store, record, failMessage) {
   } catch (err) {
     // Error name only: record contents never go to the console (SPEC §3).
     console.error(`Tavela: ${storeFor(record)} write failed:`, err?.name ?? 'unknown error');
-    return { ok: false, message: failMessage };
+    return { ok: false, message: CONNECTION_LOST.has(err?.name) ? STORAGE_LOST : failMessage };
   }
 }
 
