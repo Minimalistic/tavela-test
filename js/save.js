@@ -3,6 +3,7 @@ import * as handoff from './handoff.js';
 import { storeFor, voidRecord, updateOnDate } from './entries.js';
 import { toOffsetIso, formatDay } from './time.js';
 import { CONNECTION_LOST } from './db.js';
+import { sanitizeBathroomEvent, sanitizeHandoff, InvalidRecord, TEXT_LIMITS } from './record-schema.js';
 
 export const NOT_SAVED = 'Not saved. Your entry is still here. Try Save again.';
 export const NOT_VOIDED = 'Not saved. The entry was not voided. Try again.';
@@ -10,6 +11,20 @@ export const NOT_VOIDED = 'Not saved. The entry was not voided. Try again.';
 // the app restarts. Closing loses the form, hence "note it down".
 export const STORAGE_LOST = 'Not saved. Tavela lost its connection to storage on this device. ' +
   'Your entry is still here: note it down, then close Tavela fully and open it again.';
+
+// A record the backup check would refuse is never written: one such record
+// would make every later backup fail (createBackup opens its own file the way
+// a restore does). Names the field, never its value.
+export const notBackupSafe = (field) =>
+  `Not saved: this entry has something Tavela couldn't back up (${field}). Your entry is still here. Please report this.`;
+
+// Text past its limit is the person's to fix, so it says how, not "report".
+export function tooLong(field, length) {
+  const limit = TEXT_LIMITS[field];
+  return field === 'initials'
+    ? `Not saved: initials can be ${limit} characters at most. Your entry is still here.`
+    : `Not saved: a note is ${length} characters, over the ${limit} limit. Shorten it and Save again.`;
+}
 
 function failed(storeName, err, failMessage) {
   // Error name only: record contents never go to the console (SPEC §3).
@@ -22,6 +37,18 @@ function failed(storeName, err, failMessage) {
 // record, exactly as they were. Writing by record id makes a repeated tap
 // (or an edit) overwrite, never duplicate.
 async function write(store, record, failMessage) {
+  const check = storeFor(record) === 'handoffs' ? sanitizeHandoff : sanitizeBathroomEvent;
+  try {
+    check(record);
+  } catch (err) {
+    if (!(err instanceof InvalidRecord)) return failed(storeFor(record), err, failMessage);
+    console.error(`Tavela: ${storeFor(record)} record failed the backup check:`, err.field);
+    const value = record[err.field];
+    if (Object.hasOwn(TEXT_LIMITS, err.field) && typeof value === 'string' && value.length > TEXT_LIMITS[err.field]) {
+      return { ok: false, message: tooLong(err.field, value.length) };
+    }
+    return { ok: false, message: notBackupSafe(err.field) };
+  }
   try {
     await store.put(storeFor(record), record);
     return { ok: true, record };

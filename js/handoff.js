@@ -2,7 +2,9 @@
 // no DOM, no storage. Stored codes are stable; labels can change freely.
 import { localDate } from './time.js';
 
-export const SCHEMA_VERSION = 1;
+// One schema version for records, backups and migrations.
+import { CURRENT_SCHEMA_VERSION } from './migrations.js';
+export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
 export const SUMMARY_TYPES = [
   { code: 'home_am', label: 'Morning Update', direction: 'Home → day program' },

@@ -1,6 +1,5 @@
 import { h, ask, icon } from '../dom.js';
-import { EVENTS, labelFor } from '../bathroom.js';
-import { SUMMARY_TYPES } from '../handoff.js';
+import { entryTitle } from '../record-text.js';
 import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary } from '../entries.js';
 import { siteOptions } from '../settings.js';
 import { formatTime, dayHeading } from '../time.js';
@@ -10,12 +9,6 @@ import { DEMO_DAYS } from '../demo-data.js';
 import { entryArea, entryIcon } from '../areas.js';
 
 const NO_FILTERS = { from: null, to: null, site: null, type: null, showVoided: false };
-
-export function entryTitle(record) {
-  return record.summary_type
-    ? labelFor(SUMMARY_TYPES, record.summary_type)
-    : labelFor(EVENTS, record.event_code);
-}
 
 function preview(kind, label, text) {
   return h('span', { class: `record-note record-${kind}` },

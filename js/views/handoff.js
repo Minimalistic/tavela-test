@@ -1,8 +1,7 @@
 import { h, icon } from '../dom.js';
 import {
-  QUESTIONS, SUMMARY_TYPES, TEXT_LABELS, BEHAVIORS, newHandoffDraft, toggleBehavior, behaviorChecked, validate,
+  QUESTIONS, SUMMARY_TYPES, TEXT_LABELS, newHandoffDraft, toggleBehavior, behaviorChecked, validate,
 } from '../handoff.js';
-import { labelFor } from '../bathroom.js';
 import { saveHandoff } from '../save.js';
 import { toOffsetIso } from '../time.js';
 import { siteOptions } from '../settings.js';
@@ -162,15 +161,4 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
 
   sync();
   return form;
-}
-
-// For list previews and the detail view.
-export function behaviorSummary(record) {
-  if (record.behavior_state === 'none_observed') return 'None observed';
-  if (record.behavior_state === 'not_observed') return 'Not observed';
-  return record.behavior_codes
-    .map((code) => code === 'other' && record.behavior_other_note
-      ? `Other (${record.behavior_other_note})`
-      : labelFor(BEHAVIORS, code))
-    .join(', ');
 }

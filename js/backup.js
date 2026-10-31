@@ -13,7 +13,9 @@ export const FORMAT = 'tendwell-backup';
 // The app identifies a backup by `format` inside, never by the name.
 export const EXTENSION = '.tavela.json';
 export const ENVELOPE_VERSION = 1;
-export const APP_VERSION = '0.3.0';
+// One app version: sw.js VERSION is this plus a build counter, and
+// package.json matches (tests/shell.test.js checks both). Stamped on backups.
+export const APP_VERSION = '0.5.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;

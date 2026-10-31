@@ -1,40 +1,9 @@
 import { h, icon } from '../dom.js';
 import { entryArea, entryIcon } from '../areas.js';
-import {
-  EVENTS, PAIN, URINE_CHANGE, URINE_DETAILS, BRISTOL, BM_AMOUNT, ATTEMPT_TARGET,
-  BOWEL_CARE_STATUS, CONCERNS, labelFor,
-} from '../bathroom.js';
-import { QUESTIONS, TEXT_LABELS } from '../handoff.js';
+import { TEXT_LABELS } from '../handoff.js';
 import { saveVoid } from '../save.js';
 import { formatDateTime, formatTime } from '../time.js';
-import { entryTitle } from './records.js';
-import { behaviorSummary } from './handoff.js';
-
-function bathroomRows(record, name) {
-  return [
-    ['What happened', labelFor(EVENTS, record.event_code)],
-    ['Tried to', record.attempt_target && labelFor(ATTEMPT_TARGET, record.attempt_target)],
-    [`${name} said "ow" or showed discomfort`, record.pain_code && labelFor(PAIN, record.pain_code)],
-    ['Change in urine', record.urine_change_code && labelFor(URINE_CHANGE, record.urine_change_code)],
-    ['What changed', record.urine_change_details.map((c) => labelFor(URINE_DETAILS, c)).join(', ')],
-    ['About the change', record.urine_change_note],
-    ['Bristol type', record.bristol_type !== null && labelFor(BRISTOL, record.bristol_type)],
-    ['BM amount', record.bm_amount && labelFor(BM_AMOUNT, record.bm_amount)],
-    ['Flush-care status', record.bowel_care_status && labelFor(BOWEL_CARE_STATUS, record.bowel_care_status)],
-    ['Concern reported', record.concern_codes.map((c) => labelFor(CONCERNS, c)).join(', ')],
-    ['Notable', record.notes],
-  ];
-}
-
-function handoffRows(record, name) {
-  return [
-    ...QUESTIONS[record.summary_type].map((question) => [
-      question.legend(name),
-      question.field === 'behaviors' ? behaviorSummary(record) : labelFor(question.options, record[question.field]),
-    ]),
-    [TEXT_LABELS[record.summary_type].handoff_note, record.handoff_note],
-  ];
-}
+import { entryTitle, answerRows } from '../record-text.js';
 
 export function renderRecord(app, { record, saved = false }) {
   const name = app.settings.display_name;
@@ -42,7 +11,7 @@ export function renderRecord(app, { record, saved = false }) {
   const rows = [
     ['When', formatDateTime(record.occurred_at)],
     ['Where', app.settings.site_labels[record.site_code] ?? record.site_code],
-    ...(handoff ? handoffRows(record, name) : bathroomRows(record, name)),
+    ...answerRows(record, name),
     ['Initials', record.initials],
     ['Entered', formatDateTime(record.created_at)],
     ['Last changed', record.updated_at !== record.created_at && formatDateTime(record.updated_at)],

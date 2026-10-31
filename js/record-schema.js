@@ -44,6 +44,13 @@ const codeList = (codes) => (value, field) => {
   return value.map((code) => (codes.includes(code) ? code : fail(field)));
 };
 
+// Same limits as the form inputs' maxlength. Exported so a save that runs
+// past one (some keyboards and dictation get past maxlength) can say so.
+export const TEXT_LIMITS = {
+  initials: 8, void_reason: 200, urine_change_note: 200, notes: 500,
+  handoff_note: 500, positive_note: 500, behavior_other_note: 200,
+};
+
 // Same limits as the form inputs.
 const COMMON = {
   id,
@@ -51,9 +58,9 @@ const COMMON = {
   created_at: iso,
   updated_at: iso,
   site_code: oneOf(SITE_CODES),
-  initials: text(8),
+  initials: text(TEXT_LIMITS.initials),
   voided_at: nullable(iso),
-  void_reason: text(200),
+  void_reason: text(TEXT_LIMITS.void_reason),
 };
 
 const BATHROOM_FIELDS = {
@@ -63,13 +70,13 @@ const BATHROOM_FIELDS = {
   pain_code: nullable(oneOf(codesOf(bathroom.PAIN))),
   urine_change_code: nullable(oneOf(codesOf(bathroom.URINE_CHANGE))),
   urine_change_details: codeList(codesOf(bathroom.URINE_DETAILS)),
-  urine_change_note: text(200),
+  urine_change_note: text(TEXT_LIMITS.urine_change_note),
   bristol_type: nullable(oneOf(codesOf(bathroom.BRISTOL))),
   bm_amount: nullable(oneOf(codesOf(bathroom.BM_AMOUNT))),
   attempt_target: nullable(oneOf(codesOf(bathroom.ATTEMPT_TARGET))),
   bowel_care_status: nullable(oneOf(codesOf(bathroom.BOWEL_CARE_STATUS))),
   concern_codes: codeList(codesOf(bathroom.CONCERNS)),
-  notes: text(500),
+  notes: text(TEXT_LIMITS.notes),
 };
 
 function handoffFields(type) {
@@ -78,14 +85,14 @@ function handoffFields(type) {
     schema_version: exactly(handoff.SCHEMA_VERSION),
     summary_type: exactly(type),
     date_local: (value, field) => (typeof value === 'string' && DATE_LOCAL.test(value) ? value : fail(field)),
-    handoff_note: text(500),
-    positive_note: text(500),
+    handoff_note: text(TEXT_LIMITS.handoff_note),
+    positive_note: text(TEXT_LIMITS.positive_note),
   };
   for (const question of handoff.QUESTIONS[type]) {
     if (question.field === 'behaviors') {
       fields.behavior_codes = codeList(codesOf(handoff.BEHAVIORS));
       fields.behavior_state = nullable(oneOf(['some', ...codesOf(handoff.BEHAVIOR_STATES)]));
-      fields.behavior_other_note = text(200);
+      fields.behavior_other_note = text(TEXT_LIMITS.behavior_other_note);
     } else {
       fields[question.field] = oneOf(codesOf(question.options));
     }

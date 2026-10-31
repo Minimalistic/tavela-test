@@ -2,7 +2,7 @@ import { h, icon } from '../dom.js';
 import { BackupError, MAX_FILE_BYTES } from '../backup.js';
 import { openBackup, planRestore, applyRestore, readLocal } from '../restore.js';
 import { formatDateTime } from '../time.js';
-import { entryTitle } from './records.js';
+import { entryTitle } from '../record-text.js';
 import { passphraseInput, showPassphraseToggle } from './backup.js';
 
 const entries = (n) => `${n} ${n === 1 ? 'entry' : 'entries'}`;

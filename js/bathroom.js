@@ -1,7 +1,9 @@
 // Bathroom Check-In rules (docs/SPEC.md §7). Pure functions: no DOM, no storage,
 // so the same rules drive the form, the tests and (later) reports and restore.
 
-export const SCHEMA_VERSION = 1;
+// One schema version for records, backups and migrations.
+import { CURRENT_SCHEMA_VERSION } from './migrations.js';
+export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
 // `section` groups the tiles on the form (Jason, 10-20); codes are unchanged.
 export const EVENTS = [
