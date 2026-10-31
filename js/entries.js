@@ -58,3 +58,26 @@ export function doneToday(handoffs, type, now = new Date()) {
     .filter((record) => record.summary_type === type && !record.voided_at && localDate(record.occurred_at) === today)
     .sort(byOccurredDesc)[0] ?? null;
 }
+
+// Records grouped under one heading per local day, keeping the list's order
+// (newest first): [{ day: 'YYYY-MM-DD', records }].
+export function groupByDay(records) {
+  const groups = [];
+  for (const record of records) {
+    const day = localDate(record.occurred_at);
+    if (groups.at(-1)?.day !== day) groups.push({ day, records: [] });
+    groups.at(-1).records.push(record);
+  }
+  return groups;
+}
+
+// The folded Records filters, said in one line: "Sep 30 – Oct 30 · Day
+// program · Morning Update · with voided". Null when nothing is filtered.
+export function filterSummary({ from, to, site, type, showVoided }, { siteLabel, typeLabel, shortDate }) {
+  const dates = from && to ? `${shortDate(from)} – ${shortDate(to)}`
+    : from ? `From ${shortDate(from)}`
+    : to ? `Up to ${shortDate(to)}`
+    : null;
+  const parts = [dates, site ? siteLabel(site) : null, type ? typeLabel(type) : null, showVoided ? 'with voided' : null].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}

@@ -53,6 +53,18 @@ export function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+// A Records day heading: "Today · Fri, Oct 30, 2026", "Yesterday · …", or
+// just the date. day is a local 'YYYY-MM-DD'.
+export function dayHeading(day, now = new Date()) {
+  const [y, m, d] = day.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const label = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (day === localDate(now)) return `Today · ${label}`;
+  if (day === localDate(yesterday)) return `Yesterday · ${label}`;
+  return label;
+}
+
 export function formatDateTime(iso) {
   const date = new Date(iso);
   const day = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });

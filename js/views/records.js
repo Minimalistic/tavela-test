@@ -1,9 +1,10 @@
 import { h, ask, icon } from '../dom.js';
 import { EVENTS, labelFor } from '../bathroom.js';
 import { SUMMARY_TYPES } from '../handoff.js';
-import { ENTRY_TYPES, filterEntries } from '../entries.js';
+import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary } from '../entries.js';
 import { siteOptions } from '../settings.js';
-import { formatDateTime } from '../time.js';
+import { formatTime, dayHeading } from '../time.js';
+import { shortDate } from '../chart-draw.js';
 import { isDevHost } from '../dev-seed.js';
 import { DEMO_DAYS } from '../demo-data.js';
 import { entryArea, entryIcon } from '../areas.js';
@@ -80,7 +81,20 @@ function filterBar(app, filters) {
     h('input', { id, type: 'date', value: value ?? '', onchange: (event) => apply({ [key]: event.target.value || null }) }));
 
   const active = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
-  return h('fieldset', { class: 'filters' },
+  const said = filterSummary(filters, {
+    siteLabel: (code) => app.settings.site_labels[code] ?? code,
+    typeLabel: (code) => ENTRY_TYPES.find((t) => t.code === code)?.label ?? code,
+    shortDate,
+  });
+  // Folded to one line that says what's filtered, so the list starts near the
+  // top of a phone screen; a tap opens the controls. Each change redraws
+  // Records, so whether it's open is kept on the app (memory only).
+  return h('details', {
+    class: 'filters-fold', open: app.recordFiltersOpen === true,
+    ontoggle: (event) => { app.recordFiltersOpen = event.target.open; },
+  },
+    h('summary', {}, h('span', { class: 'filters-label' }, 'Filters'), ' ', h('span', { class: 'filters-said' }, said ?? 'None')),
+    h('fieldset', { class: 'filters' },
     h('legend', { class: 'visually-hidden' }, 'Filter entries'),
     date('filter-from', 'From', filters.from, 'from'),
     date('filter-to', 'To', filters.to, 'to'),
@@ -89,7 +103,25 @@ function filterBar(app, filters) {
     h('label', { class: 'filter filter-check' },
       h('input', { type: 'checkbox', checked: filters.showVoided, onchange: (event) => apply({ showVoided: event.target.checked }) }),
       ' Show voided'),
-    active ? h('button', { type: 'button', class: 'btn small', onclick: () => apply(NO_FILTERS) }, 'Clear filters') : null);
+    active ? h('button', { type: 'button', class: 'btn small', onclick: () => apply(NO_FILTERS) }, 'Clear filters') : null));
+}
+
+function recordRow(record, day, siteLabel, open) {
+  return h('li', {},
+    h('button', {
+      type: 'button', class: `record-row area-${entryArea(record)}${record.voided_at ? ' voided' : ''}`,
+      onclick: () => open(record),
+    },
+    // The day is in the heading above; said again, unseen, so a row heard on
+    // its own still has its date.
+    h('span', { class: 'record-when' }, h('span', { class: 'visually-hidden' }, `${day}, `), formatTime(record.occurred_at)),
+    h('span', { class: 'record-what' },
+      record.voided_at ? h('span', { class: 'voided-tag' }, 'Voided') : null,
+      icon(entryIcon(record)), ' ', entryTitle(record)),
+    h('span', { class: 'record-where' }, siteLabel(record.site_code)),
+    record.positive_note ? preview('positive', 'Positive', record.positive_note) : null,
+    record.notes ? preview('note', 'Note', record.notes) : null,
+    record.handoff_note ? preview('note', 'Note', record.handoff_note) : null));
 }
 
 export async function renderRecords(app) {
@@ -108,18 +140,10 @@ export async function renderRecords(app) {
     h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${all.length} ${all.length === 1 ? 'entry' : 'entries'} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),
     shown.length === 0
       ? h('p', { class: 'empty' }, all.length === 0 ? 'No entries yet.' : 'No entries match these filters.')
-      : h('ul', { class: 'record-list' }, shown.map((record) =>
-        h('li', {},
-          h('button', {
-            type: 'button', class: `record-row area-${entryArea(record)}${record.voided_at ? ' voided' : ''}`,
-            onclick: () => app.show('record', { record }),
-          },
-          h('span', { class: 'record-when' }, formatDateTime(record.occurred_at)),
-          h('span', { class: 'record-what' },
-            record.voided_at ? h('span', { class: 'voided-tag' }, 'Voided') : null,
-            icon(entryIcon(record)), ' ', entryTitle(record)),
-          h('span', { class: 'record-where' }, siteLabel(record.site_code)),
-          record.positive_note ? preview('positive', 'Positive', record.positive_note) : null,
-          record.notes ? preview('note', 'Note', record.notes) : null,
-          record.handoff_note ? preview('note', 'Note', record.handoff_note) : null)))));
+      : groupByDay(shown).map(({ day, records }) => {
+        const heading = dayHeading(day);
+        return h('section', { class: 'record-day', 'aria-label': heading },
+          h('h2', { class: 'record-day-title' }, heading, h('span', {}, `${records.length} ${records.length === 1 ? 'entry' : 'entries'}`)),
+          h('ul', { class: 'record-list' }, records.map((record) => recordRow(record, heading, siteLabel, (r) => app.show('record', { record: r })))));
+      }));
 }
