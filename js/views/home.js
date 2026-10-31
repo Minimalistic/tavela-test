@@ -8,13 +8,19 @@ import { formatTime, timeAgo, isSameLocalDay } from '../time.js';
 // once-a-day handoffs and share one tinted panel, rows joined in one card, so
 // they read as a pair (DECISIONS "Handoffs panel"). Tablets: Check-In beside
 // the panel. Phones: stacked.
+// A done Update's row opens it to read, with a check and a deeper tint
+// (DECISIONS "One Update a day"; look B in design/mocks/handoff-done.html).
 const tile = ({ area, iconName, label, sub, done = null, onclick, big = false }) =>
-  h('button', { type: 'button', class: `home-tile area-${area}${big ? ' home-tile-big' : ''}`, onclick },
+  h('button', {
+    type: 'button', class: `home-tile area-${area}${big ? ' home-tile-big' : ''}${done ? ' is-done' : ''}`, onclick,
+    'aria-label': done ? `${label}, done today ${done}, open it` : null,
+  },
     icon(iconName, big ? 44 : 30),
     h('span', { class: 'home-tile-text' },
       h('span', { class: 'home-tile-label' }, label),
       h('span', { class: 'home-tile-sub' }, sub),
-      done ? h('span', { class: 'home-tile-done' }, done) : null));
+      // The save icon is Lucide's check.
+      done ? h('span', { class: 'home-tile-done' }, icon('save', 18), ` Done today · ${done}`) : null));
 
 // Time only, never what happened: Home is on a shared screen.
 const lastLoggedText = (record) => {
@@ -25,10 +31,6 @@ const lastLoggedText = (record) => {
 export async function renderHome(app) {
   const [events, handoffs] = await Promise.all([app.store.getAll('bathroom_events'), app.store.getAll('handoffs')]);
   const last = lastLogged(events);
-  const doneLine = (type) => {
-    const record = doneToday(handoffs, type);
-    return record ? `Done today · ${formatTime(record.occurred_at)}` : null;
-  };
   const lastLine = last ? h('p', { class: 'home-last' }, lastLoggedText(last)) : null;
   const renderedAt = new Date();
   const home = h('section', { class: 'home' },
@@ -46,11 +48,14 @@ export async function renderHome(app) {
           h('p', { class: 'home-group-label', id: 'handoffs-label' }, icon('handoffs', 20), ' Handoffs'),
           h('p', { class: 'home-group-sub', id: 'handoffs-sub' }, 'When care changes hands')),
         h('div', { class: 'home-handoff-list' },
-          SUMMARY_TYPES.map(({ code, label, direction }) => tile({
-            area: 'handoff', iconName: handoffIcon(code), label, sub: direction,
-            done: doneLine(code),
-            onclick: () => app.show('handoff', { type: code }),
-          }))))),
+          SUMMARY_TYPES.map(({ code, label, direction }) => {
+            const done = doneToday(handoffs, code);
+            return tile({
+              area: 'handoff', iconName: handoffIcon(code), label, sub: direction,
+              done: done ? formatTime(done.occurred_at) : null,
+              onclick: () => (done ? app.show('record', { record: done }) : app.show('handoff', { type: code })),
+            });
+          })))),
     h('div', { class: 'home-secondary' },
       h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('reports') }, icon('reports'), ' Reports & Records'),
       // Hidden in demo mode, so demo data can't leave in a backup (SPEC §16).

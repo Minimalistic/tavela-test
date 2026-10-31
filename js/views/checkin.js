@@ -70,7 +70,7 @@ export async function renderCheckin(app, { record = null } = {}) {
   const startOverButton = editing ? null : h('button', { type: 'button', class: 'link start-over', hidden: true, onclick: startOver }, 'Start over');
 
   const form = h('form', { class: 'entry-form area-bathroom', novalidate: true, onsubmit: onSave, onkeydown: blockImplicitSubmit },
-    h('h1', { class: 'form-title area-bathroom' }, icon('checkin', 30), editing ? 'Edit Existing Entry' : 'New Bathroom Check-In'),
+    h('h1', { class: 'form-title area-bathroom' }, icon('checkin', 30), editing ? 'Edit Existing Entry' : 'New Bathroom Check\u2011In'),
     editing ? h('p', { class: 'hint form-sub' }, 'Bathroom Check-In') : null,
     whenGroup('When did this happen?'),
     siteGroup,

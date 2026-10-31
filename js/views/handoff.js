@@ -14,7 +14,9 @@ import { handoffIcon } from '../areas.js';
 import { createTray } from './tray.js';
 
 // Morning / Afternoon Update (SPEC §8). With `record`, edits that entry.
-export async function renderHandoff(app, { type, record = null }) {
+// With `pickDate` ("Log one for another day"), the date starts blank so the
+// person chooses it; today most likely has one already.
+export async function renderHandoff(app, { type, record = null, pickDate = false }) {
   const { store, settings } = app;
   const name = settings.display_name;
   const editing = record !== null;
@@ -22,7 +24,7 @@ export async function renderHandoff(app, { type, record = null }) {
   const lastSite = editing ? null : await store.getMeta('last_site_code');
   let draft = editing
     ? structuredClone(record)
-    : newHandoffDraft({ id: crypto.randomUUID(), type: summaryType, occurredAt: toOffsetIso(new Date()), siteCode: lastSite });
+    : newHandoffDraft({ id: crypto.randomUUID(), type: summaryType, occurredAt: pickDate ? null : toOffsetIso(new Date()), siteCode: lastSite });
   const pristine = JSON.stringify(draft);
   let saving = false;
 
@@ -35,6 +37,8 @@ export async function renderHandoff(app, { type, record = null }) {
   });
 
   function update(changes) {
+    // A new date may be free: drop the "already one" refusal.
+    if ('occurred_at' in changes && changes.occurred_at !== draft.occurred_at) clearTaken();
     draft = { ...draft, ...changes };
     sync();
   }
@@ -70,6 +74,17 @@ export async function renderHandoff(app, { type, record = null }) {
     ? h('button', { type: 'button', class: 'btn big', onclick: () => app.show('record', { record }) }, 'Cancel')
     : null;
   const saveStatus = h('p', { class: 'save-status', role: 'status', 'aria-live': 'polite' });
+  // Shown when Save is refused because that date already has this Update.
+  let taken = null;
+  const openTaken = h('button', { type: 'button', class: 'btn', hidden: true, onclick: () => app.show('record', { record: taken }) },
+    icon(handoffIcon(summaryType)), ` Open that ${typeInfo.label}`);
+  function clearTaken() {
+    if (!taken) return;
+    taken = null;
+    openTaken.hidden = true;
+    saveStatus.textContent = '';
+    saveStatus.className = 'save-status';
+  }
   // Initials sit on the raised tray, as on the Check-In; the handoff note
   // stays in the form, since it's the substance of the Update.
   const tray = createTray({
@@ -86,7 +101,7 @@ export async function renderHandoff(app, { type, record = null }) {
     positive,
     questions.flat(),
     textField('handoff_note', `${labels.handoff_note} (optional)`, { multiline: true }),
-    h('div', { class: 'save-bar' }, tray.element, saveStatus, cancelButton, saveButton));
+    h('div', { class: 'save-bar' }, tray.element, saveStatus, openTaken, cancelButton, saveButton));
 
   function sync() {
     const errors = validate(draft);
@@ -117,6 +132,7 @@ export async function renderHandoff(app, { type, record = null }) {
     }
     delete saveStatus.dataset.needs;
     saving = true;
+    clearTaken();
     saveStatus.textContent = 'Saving…';
     saveStatus.className = 'save-status';
     sync();
@@ -135,6 +151,10 @@ export async function renderHandoff(app, { type, record = null }) {
     }
     saveStatus.textContent = result.message ?? 'Not saved. Answer the questions marked "Needed to save".';
     saveStatus.className = 'save-status failed';
+    if (result.taken) {
+      taken = result.taken;
+      openTaken.hidden = false;
+    }
     sync();
   }
 

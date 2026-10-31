@@ -81,9 +81,18 @@ export function renderRecord(app, { record, saved = false }) {
     }, icon('void'), ' Void'),
     h('button', { type: 'button', class: 'btn', onclick: () => app.show('records') }, 'Back to records'));
 
+  // One Update a day: a second one for the same date is refused, so this is
+  // the way to catch up a missed day. The date starts blank, for picking.
+  const another = handoff && !record.voided_at
+    ? h('button', {
+      type: 'button', class: 'btn small record-another',
+      onclick: () => app.show('handoff', { type: record.summary_type, pickDate: true }),
+    }, 'Log one for another day')
+    : null;
+
   return h('section', { class: 'record-detail' },
     saved ? h('p', { class: 'saved-inline', role: 'status' }, `✓ Changes saved ${app.demo ? 'to the demo data' : 'on this device'} · ${formatTime(record.updated_at)}`) : null,
-    h('h1', { class: `form-title area-${entryArea(record)}` }, icon(entryIcon(record), 30), handoff ? entryTitle(record) : 'Bathroom Check-In'),
+    h('h1', { class: `form-title area-${entryArea(record)}` }, icon(entryIcon(record), 30), handoff ? entryTitle(record) : 'Bathroom Check\u2011In'),
     record.voided_at
       ? h('p', { class: 'voided-banner' },
         h('strong', {}, 'Voided '), formatDateTime(record.voided_at),
@@ -97,5 +106,6 @@ export function renderRecord(app, { record, saved = false }) {
     h('dl', {}, rows.flatMap(([term, value]) => [h('dt', {}, term), h('dd', {}, value)])),
     status,
     actions,
+    another,
     voidPanel);
 }

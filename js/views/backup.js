@@ -11,15 +11,20 @@ export async function renderBackup(app) {
   const lastBackup = await app.store.getMeta('last_backup_at');
   const log = (await app.store.getMeta('backup_log')) ?? [];
   return h('section', { class: 'backup' },
-    h('h1', {}, 'Backup & Restore'),
+    h('h1', { class: 'form-title area-backup' }, icon('backup', 30), 'Backup & Restore'),
     h('p', {}, 'Entries are stored only on this device. A backup is the only way to get them back if the device is lost, replaced or reset. Each backup is locked with a passphrase that is never stored on this device.'),
     h('dl', { class: 'facts' },
-      h('dt', {}, 'Tracker ID'), h('dd', {}, datasetId),
+      h('dt', {}, 'Tracker ID'), h('dd', {}, datasetId,
+        h('span', { class: 'fact-hint' }, 'Names this set of entries. It\'s in every backup\'s file name, so backups of different people can\'t be mixed up.')),
       h('dt', {}, 'Last backup'), h('dd', {}, lastBackup ? formatDateTime(lastBackup) : 'Never')),
     h('div', { class: 'backup-actions' },
       h('button', { type: 'button', class: 'btn primary big', onclick: () => app.show('backup-create') }, 'Create Backup'),
-      h('button', { type: 'button', class: 'btn big', onclick: () => app.show('restore', { verifyOnly: true }) }, 'Verify Backup'),
-      h('button', { type: 'button', class: 'btn big', onclick: () => app.show('restore', { verifyOnly: false }) }, 'Restore from Backup')),
+      // Verify and Restore look alike from their names, so each says what it
+      // does (review 10-30). Create needs no line: the paragraph above says it.
+      h('button', { type: 'button', class: 'btn big', 'aria-describedby': 'verify-hint', onclick: () => app.show('restore', { verifyOnly: true }) }, 'Verify Backup'),
+      h('p', { class: 'action-hint', id: 'verify-hint' }, 'Check that a saved backup opens with its passphrase. Changes nothing on this device.'),
+      h('button', { type: 'button', class: 'btn big', 'aria-describedby': 'restore-hint', onclick: () => app.show('restore', { verifyOnly: false }) }, 'Restore from Backup'),
+      h('p', { class: 'action-hint', id: 'restore-hint' }, 'Bring entries back from a backup file, after you see what will change.')),
     backupHistory(log));
 }
 
@@ -189,7 +194,7 @@ export function renderCreateBackup(app) {
   }
 
   return h('section', { class: 'backup' },
-    h('h1', {}, 'Create Backup'),
+    h('h1', { class: 'form-title area-backup' }, icon('backup', 30), 'Create Backup'),
     h('p', {}, 'Makes one encrypted file of every entry on this device, voided ones included.'),
     entry, status, savePanel, askPanel);
 }

@@ -134,7 +134,7 @@ export async function renderRecords(app) {
   const siteLabel = (code) => app.settings.site_labels[code] ?? code;
 
   return h('section', { class: 'records' },
-    h('h1', {}, 'Records'),
+    h('h1', { class: 'form-title' }, icon('records', 30), 'Records'),
     isDevHost(location.hostname) ? devTools(app, all.length) : null,
     filterBar(app, filters),
     h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${all.length} ${all.length === 1 ? 'entry' : 'entries'} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),

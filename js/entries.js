@@ -59,6 +59,16 @@ export function doneToday(handoffs, type, now = new Date()) {
     .sort(byOccurredDesc)[0] ?? null;
 }
 
+// One Update of each kind per date (DECISIONS "One Update a day"): the
+// standing Update of the same kind already on this record's (device-local)
+// date, or null. Voided ones don't count, and an edit never counts against
+// itself. Restored data can hold two on a date; this only guards saving.
+export function updateOnDate(handoffs, record) {
+  const day = localDate(record.occurred_at);
+  return handoffs.find((other) => other.id !== record.id && other.summary_type === record.summary_type
+    && !other.voided_at && localDate(other.occurred_at) === day) ?? null;
+}
+
 // Records grouped under one heading per local day, keeping the list's order
 // (newest first): [{ day: 'YYYY-MM-DD', records }].
 export function groupByDay(records) {

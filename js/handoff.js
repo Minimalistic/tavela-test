@@ -79,9 +79,11 @@ export const BEHAVIORS = [
   { code: 'kicking', label: 'Kicking' },
   { code: 'other', label: 'Other' },
 ];
+// The spec's two words differ by one letter, so each says what it means
+// underneath, in matching words (review 10-30).
 export const BEHAVIOR_STATES = [
-  { code: 'none_observed', label: 'None observed' },
-  { code: 'not_observed', label: 'Not observed (wasn\'t there or couldn\'t see)' },
+  { code: 'none_observed', label: 'None observed', description: 'Was there, saw none' },
+  { code: 'not_observed', label: 'Not observed', description: 'Wasn\'t there or couldn\'t see' },
 ];
 
 // `behaviors` is one question stored as two fields: behavior_codes[] and

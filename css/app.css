@@ -24,6 +24,9 @@
   --area-behavior-tint: #eceeed;
   --area-handoff: #0d5049;
   --area-handoff-tint: #e4efec;
+  /* A done Update's row on Home: deeper than the panel tint. Handoff green
+     on it 6.9:1, ink-soft 5.6:1. */
+  --area-handoff-done: #cfe4de;
   --area-backup: #3d5a6c;
   --area-backup-tint: #e8edf0;
   --chart-grid: #ebe7da;
@@ -163,6 +166,9 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .home-checkin .home-tile-big { flex: 1; }
 .home-last { margin: 0 4px; color: var(--ink-soft); font-size: 0.95rem; font-weight: 600; }
 .home-tile-done { margin-top: 2px; font-size: 0.95rem; font-weight: 700; color: var(--area); }
+.home-tile-done .icon { vertical-align: -3px; }
+.home-handoff-list .home-tile.is-done { background: var(--area-handoff-done); }
+.record-another { margin-top: 20px; }
 /* Handoffs panel: one tinted panel, its heading inside, the two Updates as
    rows of one card, so they read as a pair apart from Check-In. */
 .home-handoffs {
@@ -598,7 +604,13 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .backup .facts { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 8px 20px; margin: 0 0 24px; }
 .backup .facts dt { font-weight: 700; color: var(--ink-soft); }
 .backup .facts dd { margin: 0; }
+/* Behaviors: None observed and Not observed start their own row, side by
+   side, so the pair reads as the either-or it is. */
+.tile:has(input[name="behaviors"][value="none_observed"]) { grid-column: 1; margin-top: 8px; }
+.tile:has(input[name="behaviors"][value="not_observed"]) { margin-top: 8px; }
 .backup-actions { display: grid; gap: 12px; max-width: 420px; }
+.backup .fact-hint, .action-hint { display: block; color: var(--ink-soft); font-size: 0.9rem; }
+.action-hint { margin: -6px 0 6px; }
 .passphrase { width: 100%; max-width: 420px; font-size: 1.1rem; }
 input[type=password] {
   min-height: var(--tap); padding: 8px 12px; border: 2px solid var(--line); border-radius: 8px;

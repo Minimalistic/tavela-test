@@ -2,6 +2,7 @@ import { h, ask } from './dom.js';
 import { openDb, createStore, deleteDb } from './db.js';
 import { storageRiskLine } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
+import { entryFor, planNavigation } from './nav.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
@@ -36,7 +37,8 @@ const VIEWS = {
 const BACKUP_VIEWS = new Set(['backup', 'backup-create', 'restore']);
 
 // Navigation is in-memory, not URL-based: no record ids or data ever land in
-// the address bar (SPEC §3).
+// the address bar (SPEC §3). Each screen is also a browser history step
+// (nav.js), so Safari's back and forward work; the URL never changes.
 const app = {
   // store is what every view reads and writes: the demo database while demo
   // mode is on, the real one otherwise. realStore is always the real one.
@@ -114,14 +116,16 @@ const app = {
       await app.show('home');
     }
   },
-  async show(name, params = {}) {
+  // Returns 'shown', 'stayed' (the leave check kept a form open) or nothing
+  // (overtaken, switching, or reloading for an update).
+  async show(name, params = {}, { fromHistory = false } = {}) {
     if (app.switching) return;
     // A second tap during the press wait replaces the first: only the
     // newest request goes on to draw a screen.
     const ticket = ++showTicket;
     await pressSettled();
     if (ticket !== showTicket) return;
-    if (app.leaveGuard && !(await app.leaveGuard())) return;
+    if (app.leaveGuard && !(await app.leaveGuard())) return 'stayed';
     app.leaveGuard = null;
     // A test build that updated while a form was open switches over now.
     if (reloadForUpdate()) return;
@@ -147,8 +151,74 @@ const app = {
     // preventScroll: focusing <main> would scroll it to the top edge, under
     // the header (and the demo banner), undoing the scrollTo above.
     main.focus({ preventScroll: true });
+    if (!fromHistory) recordStep(name, params);
+    return 'shown';
   },
 };
+
+// The app's own view of its history steps: stack[depth] is the current one.
+// A step the app goes back to itself fires a popstate it must not redraw for.
+const nav = { stack: [entryFor('home')], depth: 0, ignorePops: 0 };
+const stateOf = (entry, depth) => ({ tavela: 1, depth, view: entry.view, params: entry.params });
+
+function recordStep(name, params) {
+  const target = entryFor(name, params);
+  const plan = planNavigation(nav.stack, nav.depth, target);
+  if (plan.stay) return;
+  if (plan.go) {
+    nav.ignorePops++;
+    nav.depth += plan.go;
+    nav.stack.length = nav.depth + 1;
+    history.go(plan.go);
+    return;
+  }
+  nav.depth++;
+  nav.stack[nav.depth] = target;
+  nav.stack.length = nav.depth + 1;
+  history.pushState(stateOf(target, nav.depth), '');
+}
+
+const RECORD_STORES = new Set(['bathroom_events', 'handoffs']);
+
+// A history step back into params a screen can draw. Null when its entry is
+// gone (voided entries stay; cleared or demo data can go).
+async function paramsFrom(kept = {}) {
+  const params = {};
+  if (kept.type) params.type = kept.type;
+  if (kept.verifyOnly) params.verifyOnly = true;
+  if (kept.pickDate) params.pickDate = true;
+  if (kept.recordId) {
+    if (!RECORD_STORES.has(kept.recordStore)) return null;
+    const record = await app.store.get(kept.recordStore, kept.recordId).catch(() => null);
+    if (!record) return null;
+    params.record = record;
+  }
+  return params;
+}
+
+async function onHistoryStep(event) {
+  if (nav.ignorePops > 0) {
+    nav.ignorePops--;
+    return;
+  }
+  const state = event.state?.tavela && VIEWS[event.state.view] ? event.state : stateOf(entryFor('home'), 0);
+  const from = nav.depth;
+  const params = await paramsFrom(state.params);
+  const [view, shownParams] = params ? [state.view, params] : ['records', {}];
+  const result = await app.show(view, shownParams, { fromHistory: true });
+  if (result === 'stayed') {
+    // The form stays open, so put history back where the form is.
+    nav.ignorePops++;
+    history.go(from - state.depth);
+    return;
+  }
+  // The browser has moved to this step whether or not it was drawn (a newer
+  // tap or swipe can overtake it), so the app's count always follows it.
+  nav.depth = state.depth;
+  nav.stack[nav.depth] = entryFor(view, shownParams);
+  nav.stack.length = nav.depth + 1;
+  if (result === 'shown' && !params) history.replaceState(stateOf(nav.stack[nav.depth], nav.depth), '');
+}
 
 // Sticky bars (the demo banner, Reports' pinned line, a form's Save bar) sit
 // over the page. Their heights feed scroll-padding, so a field scrolled or
@@ -234,6 +304,14 @@ async function boot() {
   // real people's details out of a public test build.
   document.getElementById('test-build').hidden = !isDevHost(location.hostname);
   tapFeedback(document);
+  // Whatever step the page loads on becomes Home, the first step.
+  history.replaceState(stateOf(nav.stack[0], 0), '');
+  // Every screen scrolls itself to the top (app.show). Telling the browser so
+  // stops Safari's swipe-back holding its snapshot while it waits to restore
+  // a scroll position (Jason, 10-31: the screen took a long time to appear;
+  // Tavela itself draws it in under 15ms).
+  history.scrollRestoration = 'manual';
+  window.addEventListener('popstate', onHistoryStep);
   document.getElementById('home-link').addEventListener('click', () => app.show('home'));
   document.getElementById('brand-home').addEventListener('click', () => app.show('home'));
   document.getElementById('leave-demo').addEventListener('click', () => app.leaveDemo().catch((err) => {

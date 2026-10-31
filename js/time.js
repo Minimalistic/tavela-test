@@ -65,6 +65,11 @@ export function dayHeading(day, now = new Date()) {
   return label;
 }
 
+// "Fri, Oct 30": the device-local date of an instant, short.
+export function formatDay(iso) {
+  return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 export function formatDateTime(iso) {
   const date = new Date(iso);
   const day = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });

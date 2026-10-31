@@ -161,7 +161,9 @@ export function createFields({ getDraft, update }) {
             type: 'checkbox', name: field, value: option.code,
             onchange: () => update(toggle(getDraft(), option.code)),
           }),
-          h('span', { class: 'tile-text' }, h('span', { class: 'tile-label' }, option.label))))));
+          h('span', { class: 'tile-text' },
+            h('span', { class: 'tile-label' }, option.label),
+            option.description ? h('span', { class: 'tile-sub' }, option.description) : null)))));
     groups[field] = fieldset;
     return fieldset;
   }
@@ -187,7 +189,8 @@ export function createFields({ getDraft, update }) {
   let whenInput;
   function whenGroup(label) {
     whenInput = h('input', {
-      id: 'f-occurred_at', type: 'datetime-local', value: toInputValue(getDraft().occurred_at),
+      // Blank when the draft has no time yet ("Log one for another day").
+      id: 'f-occurred_at', type: 'datetime-local', value: getDraft().occurred_at ? toInputValue(getDraft().occurred_at) : '',
       onchange: (event) => update({ occurred_at: fromInputValue(event.target.value) }),
     });
     futureWarning = h('p', { class: 'warn', hidden: true, role: 'status' },

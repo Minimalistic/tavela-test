@@ -1,4 +1,4 @@
-import { h } from '../dom.js';
+import { h, icon } from '../dom.js';
 import { BackupError, MAX_FILE_BYTES } from '../backup.js';
 import { openBackup, planRestore, applyRestore, readLocal } from '../restore.js';
 import { formatDateTime } from '../time.js';
@@ -136,7 +136,7 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
   }
 
   return h('section', { class: 'backup' },
-    h('h1', {}, verifyOnly ? 'Verify Backup' : 'Restore from Backup'),
+    h('h1', { class: 'form-title area-backup' }, icon('backup', 30), verifyOnly ? 'Verify Backup' : 'Restore from Backup'),
     h('p', {}, verifyOnly
       ? 'Checks that a backup file opens with its passphrase and shows what it holds. It never imports anything.'
       : 'Choose a backup file and enter its passphrase. You\'ll see what would change before anything is restored.'),
