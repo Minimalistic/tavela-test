@@ -13,8 +13,9 @@ const MAX_DAYS = 731;
 const DEFAULT_WINDOW = { preset: 30, from: null, to: null, site: null };
 
 // The window, said once: a bar pinned to the top while Reports scroll, with
-// the presets under it. The custom range and the place sit behind "Change",
-// which stays open while custom dates are in use (each date redraws Reports).
+// the presets under it. The custom range and the place sit behind "Other dates
+// or place", which stays open while custom dates are in use (each date redraws
+// Reports). It sits outside the presets group, which reads as "Show the last".
 function windowBar(app, state, range, parts) {
   const open = !parts || state.preset === null;
   // Kept on the app object (memory only), like the Records filters: it
@@ -35,12 +36,12 @@ function windowBar(app, state, range, parts) {
         h('option', { value: '' }, 'All places'),
         siteOptions(app.settings).map((option) => h('option', { value: option.code, selected: option.code === state.site }, option.label)))));
   const change = h('button', {
-    type: 'button', class: 'btn small secondary', 'aria-controls': 'report-change', 'aria-expanded': String(open),
+    type: 'button', class: 'link report-more', 'aria-controls': 'report-change', 'aria-expanded': String(open),
     onclick: () => {
       panel.hidden = !panel.hidden;
       change.setAttribute('aria-expanded', String(!panel.hidden));
     },
-  }, 'Change');
+  }, 'Other dates or place');
   // Only the window line is pinned, so on a phone it costs one or two lines;
   // the presets and the dates scroll away under it.
   const bar = h('p', { class: 'report-bar' },
@@ -53,8 +54,8 @@ function windowBar(app, state, range, parts) {
           type: 'button', class: `btn small${state.preset === days ? ' primary' : ' secondary'}`,
           'aria-pressed': String(state.preset === days),
           onclick: () => apply({ preset: days, from: null, to: null }),
-        }, `${days} days`)),
-        change),
+        }, `${days} days`))),
+      change,
       panel)];
 }
 
@@ -171,8 +172,7 @@ export async function renderReports(app) {
           app.recordFilters = { from: range.from, to: range.to, site: state.site, type: null, showVoided: false };
           app.show('records');
         },
-      }, `See these ${n} ${n === 1 ? 'record' : 'records'}`),
-      h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('records') }, icon('records'), ' Open Records')),
+      }, icon('records'), ` See these ${n} ${n === 1 ? 'record' : 'records'}`)),
     timelineCard(counts, (day) => {
       app.recordFilters = { from: day, to: day, site: state.site, type: null, showVoided: false };
       app.show('records');

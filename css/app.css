@@ -656,6 +656,10 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 .report-controls { margin: 10px 0 0; }
 .report-controls .presets { display: flex; flex-wrap: wrap; gap: 6px; }
 .report-controls .presets .btn + .btn { margin-left: 0; }
+.report-controls .report-more { display: block; margin-top: 4px; }
+/* A disclosure arrow; the alt text after "/" keeps screen readers quiet. */
+.report-more::after { content: ' ▾' / ''; }
+.report-more[aria-expanded="true"]::after { content: ' ▴' / ''; }
 .report-controls .report-change { margin: 10px 0 0; }
 .report-controls .report-change[hidden] { display: none; }
 .report-caveat {
