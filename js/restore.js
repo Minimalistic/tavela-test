@@ -5,6 +5,7 @@ import { BackupError, readEnvelope, decryptPayload, encryptBackup, backupFilenam
 import { toOffsetIso } from './time.js';
 import { CURRENT_SCHEMA_VERSION, migrate } from './migrations.js';
 import { sanitizeBackupData, InvalidRecord } from './record-schema.js';
+import { trackerFromTyped } from './tracker-phrase.js';
 
 export const NOT_RESTORED = 'Not restored. Nothing on this device was changed. Try again.';
 export const CHANGED_SINCE_PREVIEW = 'Not restored: entries on this device changed since the preview. Nothing was changed. Open the backup again to see a new preview.';
@@ -110,7 +111,7 @@ export function planRestore(local, data) {
   const incomingTotal = data.bathroom_events.length + data.handoffs.length;
   const localTotal = local.bathroom_events.length + local.handoffs.length;
   const counts = { new: 0, duplicate: 0, updated: 0, conflicting: 0 };
-  const base = { datasetId: data.dataset_id, localTotal, incomingTotal, data };
+  const base = { datasetId: data.dataset_id, localDatasetId: local.datasetId, localTotal, incomingTotal, data };
   if (localTotal === 0) {
     return { ...base, mode: 'replace', counts: { ...counts, new: incomingTotal }, conflicts: [], writes: null };
   }
@@ -126,12 +127,15 @@ export function planRestore(local, data) {
 }
 
 // how is 'merge' or 'replace'. Replacing another tracker's data needs its
-// Dataset ID typed back (confirmation). Checked here, not just in the view.
+// Dataset ID typed back (confirmation), as the code or its phrase. Checked
+// here, not just in the view.
 export async function applyRestore(store, plan, { how, confirmation = '' }) {
   if (how !== 'merge' && how !== 'replace') throw new Error('Restore must be merge or replace');
   if (how === 'merge' && plan.mode !== 'merge') throw new Error('Merge is only allowed for the same tracker');
   if (how === 'replace' && plan.mode === 'merge') throw new Error('Replace is not offered for the same tracker');
-  if (plan.mode === 'mismatch' && confirmation.trim().toUpperCase() !== plan.datasetId) {
+  // Both sides must be a real ID: null never confirms null.
+  const typed = trackerFromTyped(confirmation);
+  if (plan.mode === 'mismatch' && (!typed || typed !== plan.datasetId)) {
     throw new Error('Dataset ID confirmation does not match');
   }
   // Never act on a stale preview: if this device's entries changed since it was

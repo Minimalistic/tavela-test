@@ -3,13 +3,16 @@ import { BackupError, MAX_FILE_BYTES } from '../backup.js';
 import { openBackup, planRestore, applyRestore, readLocal } from '../restore.js';
 import { formatDateTime } from '../time.js';
 import { entryTitle } from '../record-text.js';
-import { passphraseInput, showPassphraseToggle } from './backup.js';
+import { phraseFor, trackerFromTyped } from '../tracker-phrase.js';
+import { passphraseInput, showPassphraseToggle, trackerFact } from './backup.js';
 
 const entries = (n) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
 
+const named = (id) => (phraseFor(id) ? `${phraseFor(id)} (${id})` : id);
+
 function summary(header, data) {
   return h('dl', { class: 'facts' },
-    h('dt', {}, 'Tracker ID'), h('dd', {}, header.dataset_id),
+    h('dt', {}, 'Tracker ID'), trackerFact(header.dataset_id),
     h('dt', {}, 'Made'), h('dd', {}, formatDateTime(header.created_at)),
     h('dt', {}, 'App version'), h('dd', {}, header.app_version),
     h('dt', {}, 'Data version'), h('dd', {}, String(header.schema_version)),
@@ -100,16 +103,19 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
     }
 
     if (plan.mode === 'mismatch') {
-      const typed = h('input', { id: 'f-confirm', type: 'text', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+      const typed = h('input', { id: 'f-confirm', type: 'text', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false' });
       const button = h('button', { type: 'button', class: 'btn danger big', disabled: true }, 'Replace Everything');
-      typed.addEventListener('input', () => { button.disabled = typed.value.trim().toUpperCase() !== plan.datasetId; });
+      typed.addEventListener('input', () => { button.disabled = trackerFromTyped(typed.value) !== plan.datasetId; });
       button.addEventListener('click', () => restore(plan, 'replace', typed.value, button));
       return h('div', { class: 'preview alert-box', role: 'alert' },
-        h('h2', {}, `This backup belongs to a different tracker (${plan.datasetId}). Restoring would mix two people's records.`),
+        h('h2', {}, `This backup belongs to a different tracker. Restoring would mix two people's records.`),
+        h('p', {}, `This backup is ${named(plan.datasetId)}. This device is ${named(plan.localDatasetId)}.`),
         h('p', {}, 'Merging is blocked. You can replace everything on this device with this backup instead.'),
         h('p', {}, h('strong', {}, `The ${entries(plan.localTotal)} on this device would be deleted.`),
           ' Make a backup of this device first if they might be needed.'),
-        h('label', { for: 'f-confirm' }, `To replace, type ${plan.datasetId}`),
+        h('label', { for: 'f-confirm' }, phraseFor(plan.datasetId)
+          ? `To replace, type ${phraseFor(plan.datasetId)} (or ${plan.datasetId})`
+          : `To replace, type ${plan.datasetId}`),
         typed,
         h('div', { class: 'detail-actions' }, button));
     }

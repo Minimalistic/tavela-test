@@ -3,9 +3,19 @@ import { BackupError, passphraseProblem } from '../backup.js';
 import { createBackup } from '../restore.js';
 import { recordBackupSaved } from '../backup-log.js';
 import { formatDateTime, toOffsetIso } from '../time.js';
+import { phraseFor } from '../tracker-phrase.js';
 
 // Backup & Restore (docs/SPEC.md §13). Moves behind the reviewer PIN in
 // session 6.
+// The phrase reads aloud; the code is what's stored and in file names.
+export function trackerFact(datasetId, hint = null) {
+  const phrase = phraseFor(datasetId);
+  return h('dd', {},
+    phrase ? h('span', { class: 'tracker-phrase' }, phrase) : null,
+    h('span', { class: phrase ? 'tracker-code' : null }, datasetId),
+    hint ? h('span', { class: 'fact-hint' }, hint) : null);
+}
+
 export async function renderBackup(app) {
   const datasetId = await app.store.getMeta('dataset_id');
   const lastBackup = await app.store.getMeta('last_backup_at');
@@ -14,8 +24,8 @@ export async function renderBackup(app) {
     h('h1', { class: 'form-title area-backup' }, icon('backup', 30), 'Backup & Restore'),
     h('p', {}, 'Entries are stored only on this device. A backup is the only way to get them back if the device is lost, replaced or reset. Each backup is locked with a passphrase that is never stored on this device.'),
     h('dl', { class: 'facts' },
-      h('dt', {}, 'Tracker ID'), h('dd', {}, datasetId,
-        h('span', { class: 'fact-hint' }, 'Names this set of entries. It\'s in every backup\'s file name, so backups of different people can\'t be mixed up.')),
+      h('dt', {}, 'Tracker ID'), trackerFact(datasetId,
+        'Names this set of entries, in words to say aloud and as a code in every backup\'s file name, so backups of different people can\'t be mixed up.'),
       h('dt', {}, 'Last backup'), h('dd', {}, lastBackup ? formatDateTime(lastBackup) : 'Never')),
     h('div', { class: 'backup-actions' },
       h('button', { type: 'button', class: 'btn primary big', onclick: () => app.show('backup-create') }, 'Create Backup'),
