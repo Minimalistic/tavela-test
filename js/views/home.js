@@ -5,8 +5,9 @@ import { lastLogged, doneToday } from '../entries.js';
 import { formatTime, timeAgo } from '../time.js';
 
 // Bathroom Check-In is the anytime capture, so it leads; the two Updates are
-// once-a-day handoffs and sit together under their own heading (DECISIONS
-// 10-20). Tablets: Check-In beside the handoff pair. Phones: stacked.
+// once-a-day handoffs and share one tinted panel, rows joined in one card, so
+// they read as a pair (DECISIONS "Handoffs panel"). Tablets: Check-In beside
+// the panel. Phones: stacked.
 const tile = ({ area, iconName, label, sub, done = null, onclick, big = false }) =>
   h('button', { type: 'button', class: `home-tile area-${area}${big ? ' home-tile-big' : ''}`, onclick },
     icon(iconName, big ? 44 : 30),
@@ -43,13 +44,19 @@ export async function renderHome(app) {
         area: 'bathroom', iconName: 'checkin', label: 'Bathroom Check\u2011In', sub: 'Any time, as it happens', big: true,
         onclick: () => app.show('checkin'),
       }), lastLine),
-      h('div', { class: 'home-handoffs area-handoff', role: 'group', 'aria-labelledby': 'handoffs-label' },
-        h('p', { class: 'home-group-label', id: 'handoffs-label' }, icon('handoffs', 18), ' Handoffs · once a day'),
-        SUMMARY_TYPES.map(({ code, label, direction }) => tile({
-          area: 'handoff', iconName: handoffIcon(code), label, sub: direction,
-          done: doneLine(code),
-          onclick: () => app.show('handoff', { type: code }),
-        })))),
+      h('div', {
+        class: 'home-handoffs area-handoff', role: 'group',
+        'aria-labelledby': 'handoffs-label', 'aria-describedby': 'handoffs-sub',
+      },
+        h('div', { class: 'home-group-head' },
+          h('p', { class: 'home-group-label', id: 'handoffs-label' }, icon('handoffs', 20), ' Handoffs'),
+          h('p', { class: 'home-group-sub', id: 'handoffs-sub' }, 'When care changes hands')),
+        h('div', { class: 'home-handoff-list' },
+          SUMMARY_TYPES.map(({ code, label, direction }) => tile({
+            area: 'handoff', iconName: handoffIcon(code), label, sub: direction,
+            done: doneLine(code),
+            onclick: () => app.show('handoff', { type: code }),
+          }))))),
     h('div', { class: 'home-secondary' },
       h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('reports') }, icon('reports'), ' Reports & Records'),
       // Hidden in demo mode, so demo data can't leave in a backup (SPEC §16).

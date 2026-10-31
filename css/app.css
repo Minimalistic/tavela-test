@@ -161,16 +161,33 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .home-checkin .home-tile-big { flex: 1; }
 .home-last { margin: 0 4px; color: var(--ink-soft); font-size: 0.95rem; font-weight: 600; }
 .home-tile-done { margin-top: 2px; font-size: 0.95rem; font-weight: 700; color: var(--area); }
-.home-handoffs { display: grid; gap: 10px; align-content: start; }
-.home-group-label {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--area);
+/* Handoffs panel: one tinted panel, its heading inside, the two Updates as
+   rows of one card, so they read as a pair apart from Check-In. */
+.home-handoffs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 16px;
+  background: var(--area-tint);
+  border-radius: var(--radius);
 }
+.home-group-head { padding: 0 4px; }
+.home-group-label { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--area); }
 .home-group-label .icon { vertical-align: -3px; }
+.home-group-sub { margin: 2px 0 0; font-size: 0.95rem; color: var(--ink-soft); }
+.home-handoff-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: var(--paper);
+  border: 2px solid var(--area);
+  border-radius: var(--radius);
+}
+.home-handoff-list .home-tile { flex: 1; border: 0; border-radius: 0; }
+.home-handoff-list .home-tile:first-child { border-radius: calc(var(--radius) - 2px) calc(var(--radius) - 2px) 0 0; }
+.home-handoff-list .home-tile:last-child { border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); }
+.home-handoff-list .home-tile + .home-tile { border-top: 1px solid var(--area); }
+.home-handoff-list .home-tile:focus-visible { outline-offset: -4px; }
 .home-secondary .btn .icon { vertical-align: -4px; }
 .home-secondary .area-backup { color: var(--area); border-color: var(--area); }
 
