@@ -487,7 +487,14 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .status .storage-risk[hidden] { display: none; }
 
 /* Test-build tools (dev hosts only) */
-.dev-tools { border: 2px dashed var(--line); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; }
+.dev-tools { border: 2px dashed var(--line); border-radius: var(--radius); padding: 0 16px; margin-bottom: 16px; }
+.dev-tools[open] { padding-bottom: 12px; }
+.dev-tools summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; font-weight: 600; color: var(--ink-soft); }
+.dev-tools summary::-webkit-details-marker { display: none; }
+.dev-tools summary::before { content: '▸' / ''; transition: rotate 150ms; }
+.dev-tools[open] summary::before { rotate: 90deg; }
+@media (prefers-reduced-motion: reduce) { .dev-tools summary::before { transition: none; } }
+.report-empty { margin: 16px 0; font-size: 1.05rem; }
 .dev-tools .hint { margin-top: 6px; }
 
 /* Notes preview in the record list */

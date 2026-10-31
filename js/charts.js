@@ -42,6 +42,14 @@ export function caveatText(c) {
   ].filter(Boolean).join(' ');
 }
 
+// Reports with nothing to draw: one line instead of every chart at zero.
+// total is every entry on the device; the window is counted already.
+export function emptyReportText(total) {
+  return total === 0
+    ? 'Nothing logged yet. Reports fill in as Check-Ins and Updates are saved.'
+    : 'Nothing logged for these dates and place. A day with nothing logged doesn\'t mean nothing happened.';
+}
+
 // The four numbers Reports lead with. Counts only: no rates, trends or flags.
 export function glanceNumbers(c) {
   const since = c.daysSinceLastBm;

@@ -1,6 +1,6 @@
 import { h, icon } from '../dom.js';
 import { computeCounts, presetWindow, dayDiff } from '../counts.js';
-import { summaries, kindTotals, windowParts, caveatText, glanceNumbers } from '../charts.js';
+import { summaries, kindTotals, windowParts, caveatText, glanceNumbers, emptyReportText } from '../charts.js';
 import { siteOptions } from '../settings.js';
 import { isDevHost } from '../dev-seed.js';
 import { devTools } from './records.js';
@@ -162,6 +162,13 @@ export async function renderReports(app) {
   }
 
   const n = counts.entries.length;
+  if (n === 0) {
+    return h('section', { class: 'reports' }, header,
+      h('p', { class: 'report-empty', role: 'status' }, emptyReportText(records.length)),
+      records.length === 0
+        ? h('button', { type: 'button', class: 'btn primary area-bathroom', onclick: () => app.show('checkin') }, icon('checkin'), ' Bathroom Check\u2011In')
+        : null);
+  }
   return h('section', { class: 'reports' }, header,
     h('p', { class: 'report-caveat' }, caveatText(counts)),
     glanceTiles(counts),

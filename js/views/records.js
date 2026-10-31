@@ -30,7 +30,10 @@ export function devTools(app, total, view = 'records') {
     status.textContent = message === 'demo failed' ? 'Demo data was not created.' : 'Nothing was cleared.';
   };
   const where = app.demo ? 'demo storage' : 'this browser\'s Tavela storage';
-  return h('div', { class: 'dev-tools' },
+  // Folded to one line so it doesn't crowd the screen it sits on; open on an
+  // empty device, where demo data is the first thing a tester wants.
+  return h('details', { class: 'dev-tools', open: total === 0 },
+    h('summary', {}, 'Test tools'),
     h('div', { class: 'demo-days', role: 'group', 'aria-labelledby': 'demo-days-label' },
       h('span', { id: 'demo-days-label' }, app.demo ? 'Start over with demo data:' : 'Explore with demo data:'),
       DEMO_DAYS.map((days) => h('button', {
