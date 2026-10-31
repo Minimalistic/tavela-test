@@ -13,6 +13,7 @@ import { renderRecord } from './views/record.js';
 import { renderReports } from './views/reports.js';
 import { renderBackup, renderCreateBackup } from './views/backup.js';
 import { renderRestore } from './views/restore.js';
+import { renderExport } from './views/export.js';
 import { ensureDatasetId } from './dataset.js';
 import { migrateLocalData } from './migrations.js';
 import { BackupError } from './backup.js';
@@ -32,6 +33,7 @@ const VIEWS = {
   backup: renderBackup,
   'backup-create': renderCreateBackup,
   restore: renderRestore,
+  export: renderExport,
 };
 
 const BACKUP_VIEWS = new Set(['backup', 'backup-create', 'restore']);

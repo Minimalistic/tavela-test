@@ -616,9 +616,11 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .home-secondary { display: flex; gap: 12px; flex-wrap: wrap; }
 .tracker-phrase { display: block; font-size: 1.3rem; font-weight: 700; letter-spacing: 0.01em; }
 .tracker-code { display: block; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.backup .facts { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 8px 20px; margin: 0 0 24px; }
-.backup .facts dt { font-weight: 700; color: var(--ink-soft); }
-.backup .facts dd { margin: 0; }
+.backup .facts, .export .facts { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 8px 20px; margin: 0 0 24px; }
+.backup .facts dt, .export .facts dt { font-weight: 700; color: var(--ink-soft); }
+.backup .facts dd, .export .facts dd { margin: 0; }
+.export-total { font-weight: 600; margin: 12px 0; }
+.share-warning { color: var(--ink-soft); border-left: 4px solid var(--line, currentColor); padding-left: 12px; margin: 0 0 16px; }
 /* Behaviors: None observed and Not observed start their own row, side by
    side, so the pair reads as the either-or it is. */
 .tile:has(input[name="behaviors"][value="none_observed"]) { grid-column: 1; margin-top: 8px; }

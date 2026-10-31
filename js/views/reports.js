@@ -177,7 +177,11 @@ export async function renderReports(app) {
           app.recordFilters = { from: range.from, to: range.to, site: state.site, type: null, showVoided: false };
           app.show('records');
         },
-      }, icon('records'), ` See these ${n} ${n === 1 ? 'record' : 'records'}`)),
+      }, icon('records'), ` See these ${n} ${n === 1 ? 'record' : 'records'}`),
+      h('button', {
+        type: 'button', class: 'btn',
+        onclick: () => app.show('export', { from: range.from, to: range.to, site: state.site }),
+      }, icon('download'), ' Export CSV')),
     timelineCard(counts, (day) => {
       app.recordFilters = { from: day, to: day, site: state.site, type: null, showVoided: false };
       app.show('records');

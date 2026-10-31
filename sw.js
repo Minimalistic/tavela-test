@@ -4,7 +4,7 @@
 // Milestone 1 uses the browser's default update lifecycle: a new version waits
 // until every Tavela window is closed. The gated, backup-first update flow
 // (SPEC §14) replaces this in session 5.
-const VERSION = '0.5.0-v70';
+const VERSION = '0.5.0-v71';
 // Cache, database and storage names keep the app's first name, "tendwell"
 // (DECISIONS "Name"): renaming them would orphan data already on devices.
 const CACHE = `tendwell-${VERSION}`;
@@ -38,6 +38,8 @@ const SHELL = [
   './js/record-schema.js',
   './js/restore.js',
   './js/backup-log.js',
+  './js/csv-export.js',
+  './js/export-log.js',
   './js/storage-risk.js',
   './js/nav.js',
   './js/views/home.js',
@@ -58,6 +60,7 @@ const SHELL = [
   './js/views/leave.js',
   './js/views/backup.js',
   './js/views/restore.js',
+  './js/views/export.js',
   './icons/icon.svg',
   './icons/icon-mono.svg',
   './icons/icon-180.png',

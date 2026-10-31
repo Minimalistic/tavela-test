@@ -77,25 +77,30 @@ export function showPassphraseToggle(...inputs) {
 
 // Tablets and phones (iPad, iPhone, Android): the share sheet (Save to Files,
 // AirDrop, Drive). A computer gets a plain
-// download (Jason, 10-20), as does any browser that refuses to share this file
-// type (desktop Chrome does, despite canShare saying yes). Touch decides it,
+// download (Jason, 10-20), as does any browser that refuses to share these
+// files (desktop Chrome does, despite canShare saying yes). Touch decides it,
 // not the user agent: iPad Safari reports itself as a Mac.
-const usesShareSheet = () => matchMedia('(any-pointer: coarse)').matches && 'share' in navigator;
+export const usesShareSheet = () => matchMedia('(any-pointer: coarse)').matches && 'share' in navigator;
 
-// download: true skips the share sheet (the ↓ button beside Save Backup File).
-async function deliver(file, { download = false } = {}) {
-  if (!download && usesShareSheet() && navigator.canShare?.({ files: [file] })) {
+// Backups and CSV exports leave the same way. files is one File or a list,
+// shared together in one sheet. download: true skips the share sheet (the ↓
+// button beside Save Backup File). Returns false if the person cancelled.
+export async function deliver(files, { download = false } = {}) {
+  const list = Array.isArray(files) ? files : [files];
+  if (!download && usesShareSheet() && navigator.canShare?.({ files: list })) {
     try {
-      await navigator.share({ files: [file] });
+      await navigator.share({ files: list });
       return true;
     } catch (err) {
       if (err?.name === 'AbortError') return false;
-      console.warn('Tavela: share sheet refused the backup, downloading instead:', err?.name ?? 'unknown error');
+      console.warn('Tavela: share sheet refused the file, downloading instead:', err?.name ?? 'unknown error');
     }
   }
-  const url = URL.createObjectURL(file);
-  h('a', { href: url, download: file.name }).click();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  for (const file of list) {
+    const url = URL.createObjectURL(file);
+    h('a', { href: url, download: file.name }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
   return true;
 }
 
