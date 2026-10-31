@@ -128,9 +128,6 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .area-backup { --area: var(--area-backup); --area-tint: var(--area-backup-tint); }
 
 .home-main { display: grid; gap: 16px; }
-@media (min-width: 700px) {
-  .home-main { grid-template-columns: 3fr 2fr; align-items: stretch; }
-}
 .home-tile {
   display: flex;
   align-items: center;
@@ -188,6 +185,17 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .home-handoff-list .home-tile:last-child { border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); }
 .home-handoff-list .home-tile + .home-tile { border-top: 1px solid var(--area); }
 .home-handoff-list .home-tile:focus-visible { outline-offset: -4px; }
+/* Side by side from 900px: below that the Handoffs panel's column is too
+   narrow for "Afternoon Update" on one line, so it stacks like a phone.
+   "Last logged" takes its own row, so Check-In and the panel share top and
+   bottom edges. After the base Home rules, so it overrides them. */
+@media (min-width: 900px) {
+  .home-main { grid-template-columns: 3fr 2fr; align-items: stretch; }
+  .home-checkin { display: contents; }
+  .home-checkin .home-tile-big { grid-column: 1; grid-row: 1; height: 100%; }
+  .home-checkin .home-last { grid-column: 1; grid-row: 2; margin-top: -8px; }
+  .home-handoffs { grid-column: 2; grid-row: 1; }
+}
 .home-secondary .btn .icon { vertical-align: -4px; }
 .home-secondary .area-backup { color: var(--area); border-color: var(--area); }
 
