@@ -9,7 +9,7 @@ import { saveBathroomEvent } from '../save.js';
 import { toOffsetIso } from '../time.js';
 import { siteOptions } from '../settings.js';
 import { createFields, blockImplicitSubmit } from './fields.js';
-import { setShown, tapFeedback } from './feedback.js';
+import { setShown } from './feedback.js';
 import { confirmLeave } from './leave.js';
 import { showSavedCard } from './saved.js';
 import { createTray } from './tray.js';
@@ -96,8 +96,6 @@ export async function renderCheckin(app, { record = null } = {}) {
       (d, code) => ({ concern_codes: toggleConcern(d.concern_codes, code) })),
     reminder,
     h('div', { class: 'save-bar' }, tray.element, startOverButton, saveStatus, cancelButton, saveButton));
-
-  tapFeedback(form);
 
   function sync() {
     const visible = visibleFields(draft);

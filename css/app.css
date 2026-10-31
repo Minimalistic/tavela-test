@@ -879,10 +879,11 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 .scale-desc { flex: 1 1 0; min-width: 0; text-align: center; font-weight: 600; color: var(--ink); }
 .scale-off { flex: 0 1 180px; display: grid; gap: 10px; }
 
-/* Tap feedback (feedback.js): a small press, a 5px ring in the
-   button's colour that fades over 300ms, and a light fill pulse. The press
+/* Tap feedback (feedback.js), on every button, answer, Home tile and
+   Records row: a small press, a 5px ring in the button's colour that fades
+   over 300ms, and a light fill pulse. The press
    animates `scale`, not `transform`, so it never fights a layout move. */
-.tile-text::before, .seg-text::before, .entry-form .btn::before {
+.tile-text::before, .seg-text::before, .btn::before, .home-tile::before, .record-row::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -892,7 +893,7 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   opacity: 0;
   pointer-events: none;
 }
-.entry-form .btn { position: relative; isolation: isolate; }
+.btn, .home-tile, .record-row { position: relative; isolation: isolate; }
 .tapped { animation: tap-press 260ms ease-out, tap-ring 300ms ease-out; }
 .tapped::before { animation: tap-fill 300ms ease-out; }
 @keyframes tap-press { 50% { scale: 0.95; } }

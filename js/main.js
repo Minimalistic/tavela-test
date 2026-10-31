@@ -1,6 +1,7 @@
 import { h, ask } from './dom.js';
 import { openDb, createStore, deleteDb } from './db.js';
 import { storageRiskLine } from './storage-risk.js';
+import { tapFeedback, pressSettled } from './views/feedback.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
@@ -16,6 +17,9 @@ import { migrateLocalData } from './migrations.js';
 import { BackupError } from './backup.js';
 import { formatDateTime } from './time.js';
 import { isDevHost } from './dev-seed.js';
+
+// Bumped by every app.show; see the press wait there.
+let showTicket = 0;
 
 const VIEWS = {
   home: renderHome,
@@ -112,6 +116,11 @@ const app = {
   },
   async show(name, params = {}) {
     if (app.switching) return;
+    // A second tap during the press wait replaces the first: only the
+    // newest request goes on to draw a screen.
+    const ticket = ++showTicket;
+    await pressSettled();
+    if (ticket !== showTicket) return;
     if (app.leaveGuard && !(await app.leaveGuard())) return;
     app.leaveGuard = null;
     // A test build that updated while a form was open switches over now.
@@ -224,6 +233,7 @@ async function boot() {
   // Shown before anything can fail, and never dismissible: it is what keeps
   // real people's details out of a public test build.
   document.getElementById('test-build').hidden = !isDevHost(location.hostname);
+  tapFeedback(document);
   document.getElementById('home-link').addEventListener('click', () => app.show('home'));
   document.getElementById('brand-home').addEventListener('click', () => app.show('home'));
   document.getElementById('leave-demo').addEventListener('click', () => app.leaveDemo().catch((err) => {

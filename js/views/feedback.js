@@ -1,5 +1,5 @@
-// Motion and tap feedback shared by the entry forms. Purely visual: nothing
-// here reads or changes the draft.
+// Motion and tap feedback, shared by the entry forms and every other button.
+// Purely visual: nothing here reads or changes the draft.
 const FADE_MS = 150;
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const leaving = new WeakMap();
@@ -40,21 +40,38 @@ export function setShown(el, shown) {
   }, settle);
 }
 
-// Tap feedback on every answer and button in a form: a small press, a ring
-// in the button's colour and a light fill pulse (CSS keyframes on .tapped).
-// Re-adding the class restarts them, so quick repeat taps each register.
-export function pressed(el) {
+// Long enough to see the press and the ring start before a button that opens
+// another screen is replaced (Jason, 10-31: Home's buttons should feel like
+// the Updates' answers). The press peaks at 130ms of its 260ms.
+export const PRESS_SHOWN_MS = 180;
+let pressShownBy = 0;
+
+// Tap feedback: a small press, a ring in the button's colour and a light fill
+// pulse (CSS keyframes on .tapped). Re-adding the class restarts them, so
+// quick repeat taps each register.
+export function pressed(el, now = performance.now()) {
   el.classList.remove('tapped');
   void el.offsetWidth; // force a style flush so the animation starts over
   el.classList.add('tapped');
+  if (!reduceMotion()) pressShownBy = now + PRESS_SHOWN_MS;
 }
 
-// Scale segments call pressed() themselves, on lift.
-export function tapFeedback(form) {
-  form.addEventListener('click', (event) => {
+// app.show waits on this, so a tap that opens a screen is seen first. With
+// reduced motion there's no press to see, so no wait.
+export function pressSettled(now = performance.now()) {
+  const wait = pressShownBy - now;
+  return wait > 0 ? new Promise((resolve) => setTimeout(resolve, wait)) : Promise.resolve();
+}
+
+// One listener for the whole app: form answers, buttons, Home's tiles and
+// Records rows. Scale segments call pressed() themselves, on lift. It
+// listens in the capture phase so the press is recorded before the button's
+// own handler calls app.show, which then waits for it.
+export function tapFeedback(root) {
+  root.addEventListener('click', (event) => {
     const target = event.target.matches('.tile input, .seg input')
       ? event.target.closest('.tile, .seg').querySelector('.tile-text, .seg-text')
-      : event.target.closest('.btn');
+      : event.target.closest('.btn, .home-tile, .record-row');
     if (target) pressed(target);
-  });
+  }, true);
 }

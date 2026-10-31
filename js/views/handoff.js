@@ -7,7 +7,7 @@ import { saveHandoff } from '../save.js';
 import { toOffsetIso } from '../time.js';
 import { siteOptions } from '../settings.js';
 import { createFields, blockImplicitSubmit } from './fields.js';
-import { setShown, tapFeedback } from './feedback.js';
+import { setShown } from './feedback.js';
 import { confirmLeave } from './leave.js';
 import { showSavedCard } from './saved.js';
 import { handoffIcon } from '../areas.js';
@@ -87,8 +87,6 @@ export async function renderHandoff(app, { type, record = null }) {
     questions.flat(),
     textField('handoff_note', `${labels.handoff_note} (optional)`, { multiline: true }),
     h('div', { class: 'save-bar' }, tray.element, saveStatus, cancelButton, saveButton));
-
-  tapFeedback(form);
 
   function sync() {
     const errors = validate(draft);
