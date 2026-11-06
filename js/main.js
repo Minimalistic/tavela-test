@@ -19,7 +19,7 @@ import { checkBeforeForm } from './views/drafts.js';
 import { followSystemTextSize } from './text-size.js';
 import { ensureDatasetId } from './dataset.js';
 import { migrateLocalData } from './migrations.js';
-import { BackupError } from './backup.js';
+import { BackupError, APP_VERSION } from './backup.js';
 import { formatDateTime } from './time.js';
 import { isDevHost } from './dev-seed.js';
 
@@ -349,6 +349,8 @@ async function requestPersistence() {
 
 async function boot() {
   followSystemTextSize();
+  // So a tester can say which version they're on (DECISIONS "Versions").
+  document.getElementById('app-version').textContent = `Tavela ${APP_VERSION}`;
   // Turning the device changes how much of the screen the Save bar covers.
   window.addEventListener('resize', updateCovers);
   // Shown before anything can fail, and never dismissible: it is what keeps
@@ -455,7 +457,7 @@ function showUpdatedNote() {
     sessionStorage.removeItem(UPDATED_KEY);
   } catch { /* no note without storage */ }
   if (!updated) return;
-  const note = h('p', { class: 'toast update-note', role: 'status' }, 'Updated to the newest test build.');
+  const note = h('p', { class: 'toast update-note', role: 'status' }, `Updated to Tavela ${APP_VERSION}.`);
   document.body.append(note);
   setTimeout(() => note.remove(), 4000);
 }

@@ -1,10 +1,12 @@
 // Precaches the whole app shell so Tavela runs with no network at all.
-// Bump VERSION whenever any file in SHELL changes; the cache name follows it.
+// VERSION is APP_VERSION plus "+dev" here; tools/publish-test.sh stamps the
+// commit into the published copy (0.6.0+d66fabc), so every published build
+// gets a fresh cache with no hand-kept counter (DECISIONS "Versions").
 //
 // Milestone 1 uses the browser's default update lifecycle: a new version waits
 // until every Tavela window is closed. The gated, backup-first update flow
 // (SPEC §14) replaces this in session 5.
-const VERSION = '0.5.0-v94';
+const VERSION = '0.6.0+dafc0cd';
 const CACHE = `tavela-${VERSION}`;
 
 const SHELL = [
@@ -94,11 +96,25 @@ self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') self.skipWaiting();
 });
 
+// This Mac and the tailnet: fresh files first, so an edit shows on the next
+// load without a new version; the cache still answers when offline. Not the
+// public test build, which gets a stamped version per publish.
+const DEV = ['localhost', '127.0.0.1'].includes(self.location.hostname) || self.location.hostname.endsWith('.ts.net');
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
+    if (DEV) {
+      try {
+        const fresh = await fetch(request, { cache: 'no-store' });
+        if (fresh.ok) await cache.put(request, fresh.clone());
+        return fresh;
+      } catch {
+        // Offline: fall through to the cache.
+      }
+    }
     const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
     if (request.mode === 'navigate') return cache.match('./index.html');

@@ -13,9 +13,10 @@ export const FORMAT = 'tavela-backup';
 // The app identifies a backup by `format` inside, never by the name.
 export const EXTENSION = '.tavela.json';
 export const ENVELOPE_VERSION = 1;
-// One app version: sw.js VERSION is this plus a build counter, and
-// package.json matches (tests/shell.test.js checks both). Stamped on backups.
-export const APP_VERSION = '0.5.0';
+// The app's version (DECISIONS "Versions"): semver, bumped when something
+// ships to testers, never per edit. Shown in the footer and stamped on
+// backups; sw.js and package.json match it (tests check both).
+export const APP_VERSION = '0.6.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;

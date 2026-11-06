@@ -636,6 +636,7 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .status p { margin: 0; }
 .status .storage-risk { margin-top: 4px; color: var(--need); font-weight: 600; }
 .status .storage-risk[hidden] { display: none; }
+.status .app-version { margin-top: 4px; font-size: 0.85rem; color: var(--ink-soft); }
 /* Home says it in a card at the top instead (home.js); once is enough. */
 body:has(.storage-banner) .status .storage-risk { display: none; }
 .storage-banner {
