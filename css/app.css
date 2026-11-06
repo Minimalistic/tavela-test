@@ -53,7 +53,10 @@ html {
 
 body {
   margin: 0;
+  /* svh: the height with Safari's bars showing, so the footer isn't pushed
+     below the visible screen. 100vh first for browsers without svh. */
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   background: var(--cream);
@@ -71,12 +74,19 @@ main {
   outline: none;
 }
 
-h1 { font-size: 1.75rem; color: var(--green); margin: 8px 0 20px; }
+/* Big type grows more slowly than body text (ACCEPTANCE "Text Size"): each
+   large size is min(its rem, max(its default px, 1.4rem)). That is exactly
+   today's size at the default Text Size, smaller with smaller text, and at
+   the big sizes about 1.25x the body text (1.125rem) instead of 1.5-1.8x. */
+h1 { font-size: min(1.75rem, max(28px, 1.4rem)); color: var(--green); margin: 8px 0 20px; }
+/* Focused by script on every screen change (main.js), never by Tab. */
+h1[tabindex="-1"] { outline: none; }
 h2 { font-size: 1.3rem; margin: 0 0 8px; }
 
 /* Header */
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -100,7 +110,9 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 }
 .brand:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .brand img { border-radius: 9px; }
-.wordmark { font: 700 1.6rem/1 var(--font); letter-spacing: -0.01em; }
+/* The wordmark is a logo (screen readers get the button's name), so it stops
+   growing past a little over today's size and leaves the header room. */
+.wordmark { font: 700 min(1.6rem, 32px)/1 var(--font); letter-spacing: -0.01em; }
 .wordmark .lead { color: var(--green); }
 .wordmark .tail { color: var(--sage); }
 
@@ -121,7 +133,7 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .btn.primary { background: var(--green); color: #fff; }
 .btn.danger { border-color: var(--danger); color: var(--danger); }
 .btn.big { min-height: 64px; font-size: 1.25rem; padding: 14px 32px; }
-.btn.huge { min-height: 112px; font-size: 1.5rem; width: 100%; }
+.btn.huge { min-height: 112px; font-size: min(1.5rem, max(24px, 1.4rem)); width: 100%; }
 .btn.secondary { border-width: 1px; font-weight: 500; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:focus-visible, .tile:focus-within, .record-row:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
@@ -138,7 +150,9 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .area-handoff { --area: var(--area-handoff); --area-tint: var(--area-handoff-tint); }
 .area-backup { --area: var(--area-backup); --area-tint: var(--area-backup-tint); }
 
-.home-main { display: grid; gap: 16px; }
+/* minmax(0, …): a column may be narrower than its longest word, so big
+   Text Size wraps the labels instead of pushing the page sideways. */
+.home-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .home-tile {
   display: flex;
   align-items: center;
@@ -161,9 +175,9 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .home-tile:active { background: var(--area-tint); }
 .home-tile-big { min-height: 160px; background: var(--area-tint); }
 .home-tile-text { display: flex; flex-direction: column; gap: 2px; }
-.home-tile-label { font-size: 1.45rem; font-weight: 700; color: var(--area); }
-.home-tile-big .home-tile-label { font-size: 1.75rem; }
-@media (max-width: 420px) { .home-tile-big .home-tile-label { font-size: 1.5rem; } }
+.home-tile-label { overflow-wrap: anywhere; font-size: min(1.45rem, max(23.2px, 1.4rem)); font-weight: 700; color: var(--area); }
+.home-tile-big .home-tile-label { font-size: min(1.75rem, max(28px, 1.4rem)); }
+@media (max-width: 420px) { .home-tile-big .home-tile-label { font-size: min(1.5rem, max(24px, 1.4rem)); } }
 .home-tile-sub { font-size: 1rem; color: var(--ink-soft); }
 .home-checkin { display: flex; flex-direction: column; gap: 8px; }
 .home-checkin .home-tile-big { flex: 1; }
@@ -204,7 +218,7 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
    "Last logged" takes its own row, so Check-In and the panel share top and
    bottom edges. After the base Home rules, so it overrides them. */
 @media (min-width: 900px) {
-  .home-main { grid-template-columns: 3fr 2fr; align-items: stretch; }
+  .home-main { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
   .home-checkin { display: contents; }
   .home-checkin .home-tile-big { grid-column: 1; grid-row: 1; height: 100%; }
   .home-checkin .home-last { grid-column: 1; grid-row: 2; margin-top: -8px; }
@@ -250,8 +264,10 @@ legend, .legend-like { display: block; font-weight: 700; font-size: 1.2rem; marg
 .field-need:empty { display: none; }
 .hint { color: var(--ink-soft); font-size: 0.95rem; margin: 8px 0 0; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.cols-4 .tiles { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+/* Tiles drop to one column once the text is too big for two (7em); min(100%)
+   keeps a column from ever being wider than the screen. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, max(150px, 7em)), 1fr)); gap: 10px; }
+.cols-4 .tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(160px, 7em)), 1fr)); }
 .tile { position: relative; display: block; cursor: pointer; }
 .tile input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 /* Every option is a button with a fixed size and place. Pressing one sinks
@@ -278,13 +294,19 @@ legend, .legend-like { display: block; font-weight: 700; font-size: 1.2rem; marg
   background: var(--area-tint, #e7efe9);
   box-shadow: inset 0 2px 5px rgba(31, 42, 40, 0.2), inset 0 0 0 1px color-mix(in srgb, var(--area, var(--green)) 30%, transparent);
 }
-.tile-label { font-weight: 600; }
+.tile-label { font-weight: 600; overflow-wrap: anywhere; }
 .tile-sub { font-size: 0.9rem; color: var(--ink-soft); }
 
 .when-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .time-shortcuts { display: flex; gap: 8px; flex-wrap: wrap; }
 input[type=datetime-local], input[type=date], input[type=text], textarea, select {
   font: inherit;
+  /* Never under 16px, even at the smallest Text Size: iOS zooms the page
+     when a smaller field gets focus. */
+  font-size: max(1em, 16px);
+  /* Big Text Size makes the date and time wider than a phone. */
+  max-width: 100%;
+  min-width: 0;
   min-height: var(--tap);
   padding: 10px 14px;
   border: 2px solid var(--line);
@@ -305,6 +327,12 @@ textarea { width: 100%; resize: vertical; }
 }
 .reminder[hidden], .warn[hidden] { display: none; }
 
+/* Read by text-size.js for the iOS Text Size; never seen. */
+.text-size-probe { font: -apple-system-body; position: absolute; visibility: hidden; pointer-events: none; }
+/* When the Save bar would cover more than a quarter of the screen (big Text
+   Size, or a phone on its side), it sits at the end of the form instead of
+   floating over it (main.js updateCovers). */
+.save-bar.save-bar-inline { position: static; }
 .save-bar {
   position: sticky;
   bottom: 0;
@@ -444,7 +472,7 @@ dialog.saved-dialog::backdrop { background: transparent; }
   text-align: center;
 }
 .saved-mark { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--green); color: #fff; font-size: 1.6rem; font-weight: 700; }
-.saved-title { margin: 12px 0 4px; font-size: 1.5rem; outline: none; }
+.saved-title { margin: 12px 0 4px; font-size: min(1.5rem, max(24px, 1.4rem)); outline: none; }
 .saved-what { margin: 0 0 16px; font-weight: 600; }
 .saved-where { margin: -10px 0 16px; color: var(--ink-soft); font-size: 0.95rem; }
 
@@ -492,6 +520,53 @@ dialog.saved-dialog::backdrop { background: transparent; }
   .record-day .record-row { grid-template-columns: 5.2em minmax(0, 1fr); }
   .record-day .record-where { grid-row: 2; grid-column: 2; text-align: left; }
 }
+/* The accessibility Text Sizes (text-size.js). A single word can be wider
+   than a phone there, so any word may break; label-and-value lists stack;
+   and records stack time, what and where. */
+.big-text body { overflow-wrap: anywhere; }
+.big-text .record-detail dl, .big-text .backup .facts, .big-text .export .facts { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+.big-text .record-day .record-row { grid-template-columns: minmax(0, 1fr); }
+.big-text .record-day .record-what, .big-text .record-day .record-where { grid-row: auto; grid-column: 1; text-align: left; }
+
+/* Wide screens (ACCEPTANCE "Built for the screen it's on"): an iPad on its
+   side, or a computer, gets the forms in two columns instead of a phone
+   column with empty margins. From 1100px, so every iPad in landscape and
+   none in portrait. Not at the accessibility Text Sizes (html.big-text):
+   two columns of very large text are cramped, so those keep one. A media
+   query plus that class rather than a container query, which would make
+   <main> the containing block for everything fixed inside it.
+   Only placement changes, never order: screen readers and the keyboard
+   still go When, Where, What happened, details, note, Save. */
+@media (min-width: 1100px) {
+  :root:not(.big-text) main:has(.entry-form) { max-width: 1200px; }
+  :root:not(.big-text) .entry-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+  /* Questions pair up; everything else (title, long notes, the reminder,
+     the Save bar) spans both columns. */
+  :root:not(.big-text) .entry-form > * { grid-column: 1 / -1; }
+  :root:not(.big-text) .entry-form > .group:not(.positive-group, :has(textarea)) { grid-column: auto; }
+  /* Check-In: When and Where on the left, What happened beside them. */
+  /* The subtitle row only when there is one (editing): an empty named row
+     would take the next full-width item, the Save bar. */
+  :root:not(.big-text) .entry-form.area-bathroom { grid-template-areas: "title title" "when what" "where what"; }
+  :root:not(.big-text) .entry-form.area-bathroom:has(> .form-sub) { grid-template-areas: "title title" "sub sub" "when what" "where what"; }
+  :root:not(.big-text) .entry-form.area-bathroom > .form-title { grid-area: title; }
+  :root:not(.big-text) .entry-form.area-bathroom > .form-sub { grid-area: sub; }
+  :root:not(.big-text) .entry-form.area-bathroom > [data-field=occurred_at] { grid-area: when; }
+  :root:not(.big-text) .entry-form.area-bathroom > [data-field=site_code] { grid-area: where; }
+  :root:not(.big-text) .entry-form.area-bathroom > [data-field=event_code] { grid-area: what; }
+}
+/* With room to spare, the tray's buttons share one row with Save instead
+   of a row of their own: on a wide screen that row was mostly empty, and
+   on a phone on its side it was height the form needs. */
+@media (min-width: 1100px), (orientation: landscape) and (max-height: 500px) {
+  .tray { flex: 1 1 auto; }
+}
+/* A phone on its side: a shorter Save too, so the bar stays under a quarter
+   of the screen. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .save-bar .btn.big { min-height: 48px; padding: 8px 24px; }
+  .entry-form .save-bar:has(.tray), .save-bar { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+}
 .empty { color: var(--ink-soft); }
 .record-detail dl { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 10px 20px; margin: 0 0 28px; }
 .record-detail dt { font-weight: 700; color: var(--ink-soft); }
@@ -524,8 +599,40 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
   text-align: center;
 }
 .status p { margin: 0; }
-.status .storage-risk { margin-top: 4px; color: var(--danger); font-weight: 600; }
+.status .storage-risk { margin-top: 4px; color: var(--need); font-weight: 600; }
 .status .storage-risk[hidden] { display: none; }
+/* Home says it in a card at the top instead (home.js); once is enough. */
+body:has(.storage-banner) .status .storage-risk { display: none; }
+.storage-banner {
+  /* .home's 28px gap spaces it; pulled up so it reads as a note, not a tile. */
+  margin: 0 0 -12px; padding: 10px 14px;
+  border-left: 4px solid var(--need); border-radius: 10px;
+  background: var(--warn-bg); color: var(--ink);
+  /* Amber, not red: nothing has gone wrong yet (ACCEPTANCE "Shorter install
+     banner"). The title and "How to install" share a line when they fit. */
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px;
+}
+.storage-banner p { margin: 0; }
+.storage-banner-more summary { cursor: pointer; font-weight: 600; color: var(--green); min-height: 44px; display: flex; align-items: center; gap: 6px; }
+.storage-banner-more summary::-webkit-details-marker { display: none; }
+.storage-banner-more summary::before { content: '▸' / ''; transition: rotate 150ms; }
+.storage-banner-more[open] { flex-basis: 100%; }
+.storage-banner-more[open] summary::before { rotate: 90deg; }
+.storage-banner-more summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.storage-banner-more ol { margin: 4px 0 4px; padding-left: 1.5em; }
+@media (prefers-reduced-motion: reduce) { .storage-banner-more summary::before { transition: none; } }
+/* An unsaved entry kept on the device (views/drafts.js): calm, the bathroom
+   area's colour, and above the tiles so it's the first thing seen. */
+.draft-card {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  margin: 0 0 -12px; padding: 10px 14px;
+  border: 1px solid var(--line); border-left: 4px solid var(--area-bathroom);
+  border-radius: 10px; background: var(--paper); color: var(--ink);
+}
+.draft-card p { margin: 0; flex: 1 1 14rem; }
+.draft-card .draft-card-title { font-weight: 700; }
+.draft-card-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.storage-banner .storage-banner-title { font-weight: 700; color: var(--need); }
 
 /* Test-build tools (dev hosts only) */
 .dev-tools { border: 2px dashed var(--line); border-radius: var(--radius); padding: 0 16px; margin-bottom: 16px; }
@@ -563,7 +670,7 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
   white-space: nowrap;
 }
 .form-sub { margin: -14px 0 18px; }
-.cols-3 .tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.cols-3 .tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(190px, 7em)), 1fr)); }
 
 .icon { vertical-align: -3px; flex: none; }
 .icon-positive { color: #b8860b; }
@@ -592,7 +699,7 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
   margin: 0 0 8px;
 }
 .filter { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 0.95rem; }
-.filter select, .filter input[type=date] { min-width: 150px; }
+.filter select, .filter input[type=date] { min-width: 150px; font-size: max(1rem, 16px); } /* under 16px, iOS zooms the page on focus */
 .filter-check { flex-direction: row; align-items: center; min-height: var(--tap); gap: 8px; }
 .filter-check input { width: 24px; height: 24px; }
 
@@ -630,11 +737,16 @@ dialog.ask::backdrop { background: rgba(9, 59, 54, 0.45); }
 .backup-actions { display: grid; gap: 12px; max-width: 420px; }
 .backup .fact-hint, .action-hint { display: block; color: var(--ink-soft); font-size: 0.9rem; }
 .action-hint { margin: -6px 0 6px; }
-.passphrase { width: 100%; max-width: 420px; font-size: 1.1rem; }
+.passphrase { width: 100%; max-width: 420px; font-size: max(1.1rem, 16px); }
 input[type=password] {
   min-height: var(--tap); padding: 8px 12px; border: 2px solid var(--line); border-radius: 8px;
-  font: inherit; background: var(--paper); color: var(--ink);
+  font: inherit; font-size: max(1em, 16px); background: var(--paper); color: var(--ink);
 }
+/* Safari sizes a date field to its text and never wraps it, so at big Text
+   Size the date and time alone is wider than a phone. Its text grows with
+   Text Size until it reaches 6.5vw, about as big as fits a phone's width,
+   and never goes under 16px. */
+input[type=datetime-local], input[type=date] { font-size: max(16px, min(1em, 6.5vw)); }
 input[type=file] { font: inherit; min-height: var(--tap); }
 .void-panel.calm { border-color: var(--green); }
 .void-panel.calm[hidden], .backup [hidden] { display: none; }
@@ -671,7 +783,10 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   padding: 6px 20px;
   background: var(--ink);
   color: var(--paper);
-  font-size: 0.9rem;
+  /* Grows more slowly than body text, like the headings: unchanged at the
+     default size, half the body size at the biggest, so on a test build
+     the notice doesn't push Check-In off the first screen. */
+  font-size: min(0.9rem, max(16px, 0.5rem));
   text-align: center;
 }
 .test-build[hidden] { display: none; }
@@ -712,7 +827,9 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   background: var(--cream);
   border-bottom: 1px solid var(--line);
 }
-.report-bar span { color: var(--ink-soft); font-size: 0.9rem; white-space: nowrap; }
+/* An inline block moves to its own line whole, as nowrap did, but can still
+   wrap inside itself when big Text Size makes it wider than the screen. */
+.report-bar span { display: inline-block; max-width: 100%; color: var(--ink-soft); font-size: 0.9rem; }
 .report-controls { margin: 10px 0 0; }
 .report-controls .presets { display: flex; flex-wrap: wrap; gap: 6px; }
 .report-controls .presets .btn + .btn { margin-left: 0; }
@@ -741,8 +858,8 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   border-top: 4px solid var(--area);
   box-shadow: var(--lift);
 }
-.glance-tile strong { font-size: 1.8rem; line-height: 1.15; color: var(--area); font-variant-numeric: tabular-nums; }
-.glance-tile span { color: var(--ink-soft); font-size: 0.9rem; }
+.glance-tile strong { font-size: min(1.8rem, max(28.8px, 1.4rem)); line-height: 1.15; color: var(--area); font-variant-numeric: tabular-nums; }
+.glance-tile span { color: var(--ink-soft); font-size: 0.9rem; overflow-wrap: anywhere; }
 .report-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
 .report-links .btn + .btn { margin-left: 0; }
 
@@ -753,6 +870,8 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   border-radius: var(--radius);
   padding: 16px 18px;
   margin: 0 0 20px;
+  /* At the biggest Text Size a single word can be wider than a phone. */
+  overflow-wrap: anywhere;
 }
 .chart-summary { margin: 0 0 6px; }
 .chart-grid { stroke: var(--chart-grid); stroke-width: 1; }

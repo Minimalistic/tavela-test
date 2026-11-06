@@ -4,6 +4,7 @@ import { handoffIcon } from '../areas.js';
 import { lastLogged, doneToday } from '../entries.js';
 import { formatTime, timeAgo, isSameLocalDay } from '../time.js';
 import { backupDue, backupReminderText } from '../backup-log.js';
+import { draftCardFor } from './drafts.js';
 
 // Bathroom Check-In is the anytime capture, so it leads; the two Updates are
 // once-a-day handoffs and share one tinted panel, rows joined in one card, so
@@ -44,9 +45,22 @@ export async function renderHome(app) {
       h('p', {}, icon('backup', 20), ' ', backupReminderText(due)),
       h('button', { type: 'button', class: 'btn small', onclick: () => app.show('backup-create') }, 'Back up now'))
     : null;
+  // A plain card, not a live region, like the backup reminder: read once in
+  // order, right after the heading. The steps sit in a native <details>, so
+  // screen readers announce it as expanded or collapsed with no extra code.
+  const banner = app.storageBanner
+    ? h('div', { class: 'storage-banner' },
+      h('p', { class: 'storage-banner-title' }, app.storageBanner.title),
+      h('details', { class: 'storage-banner-more' },
+        h('summary', {}, app.storageBanner.more),
+        h('ol', {}, app.storageBanner.steps.map((step) => h('li', {}, step)))))
+    : null;
+  const draftCard = await draftCardFor(app);
   const home = h('section', { class: 'home' },
     // Screen readers navigate by headings; Home's big buttons speak for themselves visually.
     h('h1', { class: 'visually-hidden' }, 'Home'),
+    banner,
+    draftCard,
     h('div', { class: 'home-main' },
       h('div', { class: 'home-checkin' }, tile({
         // A non-breaking hyphen (U+2011) keeps "Check-In" whole on a phone.

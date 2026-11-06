@@ -11,21 +11,28 @@ import { confirmLeave } from './leave.js';
 import { showSavedCard } from './saved.js';
 import { handoffIcon } from '../areas.js';
 import { createTray } from './tray.js';
+import { keepDraft } from './drafts.js';
+import { stableJson } from '../draft.js';
 
 // Morning / Afternoon Update (SPEC §8). With `record`, edits that entry.
 // With `pickDate` ("Log one for another day"), the date starts blank so the
 // person chooses it; today most likely has one already.
-export async function renderHandoff(app, { type, record = null, pickDate = false }) {
+// With `resume`, reopens an unsaved entry kept on the device (draft.js).
+export async function renderHandoff(app, { type, record = null, pickDate = false, resume = null }) {
   const { store, settings } = app;
   const name = settings.display_name;
-  const editing = record !== null;
-  const summaryType = editing ? record.summary_type : type;
+  const editing = resume ? resume.editing : record !== null;
+  const summaryType = resume ? resume.data.summary_type : editing ? record.summary_type : type;
   const lastSite = editing ? null : await store.getMeta('last_site_code');
-  let draft = editing
-    ? structuredClone(record)
-    : newHandoffDraft({ id: crypto.randomUUID(), type: summaryType, occurredAt: pickDate ? null : toOffsetIso(new Date()), siteCode: lastSite });
-  const pristine = JSON.stringify(draft);
+  let draft;
+  if (resume) draft = structuredClone(resume.data);
+  else if (editing) draft = structuredClone(record);
+  else draft = newHandoffDraft({ id: crypto.randomUUID(), type: summaryType, occurredAt: pickDate ? null : toOffsetIso(new Date()), siteCode: lastSite });
+  // A resumed new entry is unsaved work from the start; a resumed edit
+  // compares against the saved entry.
+  const pristine = resume && !editing ? '' : stableJson(editing ? record : draft);
   let saving = false;
+  let keeper = null;
 
   const {
     radioGroup, checkGroup, textField, whenGroup, syncInputs,
@@ -107,6 +114,7 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
     setShown(otherNote, draft.behavior_codes.includes('other'));
     syncInputs(form, errors);
     tray.sync();
+    keeper?.changed();
     const missing = Object.keys(errors).length;
     // Save never greys out; after an early tap it carries the count.
     saveCount.hidden = !needsShown() || missing === 0;
@@ -144,6 +152,7 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
           console.warn('Tavela: could not remember last site:', err?.name ?? 'unknown error'));
       }
       app.leaveGuard = null;
+      await keeper.clear();
       if (editing) app.show('record', { record: result.record, saved: true });
       else showSavedCard(app, result.record);
       return;
@@ -157,7 +166,17 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
     sync();
   }
 
-  app.leaveGuard = () => confirmLeave(JSON.stringify(draft) !== pristine, editing);
+  const isDirty = () => stableJson(draft) !== pristine;
+  keeper = keepDraft(store, {
+    kind: 'handoff', editing, baseUpdatedAt: record?.updated_at ?? null, resumed: resume,
+    getDraft: () => draft, isDirty, isLive: () => form.isConnected,
+  });
+  app.leaveGuard = async () => {
+    const dirty = isDirty();
+    const leave = await confirmLeave(dirty, editing);
+    if (leave && dirty) await keeper.clear();
+    return leave;
+  };
 
   sync();
   return form;

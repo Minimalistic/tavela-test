@@ -44,7 +44,9 @@ export function createFields({ getDraft, update }) {
         onchange: () => update({ [field]: option.code }),
       }),
       h('span', { class: 'tile-text' },
-        h('span', { class: 'tile-label' }, iconFor ? [areaIcon(...iconFor(option)), ' '] : null, option.label),
+        // A non-breaking hyphen keeps "flush-care" whole when the tile wraps;
+        // only on screen, so CSV and record text keep the plain label.
+        h('span', { class: 'tile-label' }, iconFor ? [areaIcon(...iconFor(option)), ' '] : null, option.label.replaceAll('-', '\u2011')),
         describe?.(option) ? h('span', { class: 'tile-sub' }, describe(option)) : null));
     const sections = [...new Set(options.map((option) => option.section).filter(Boolean))];
     const body = sections.length === 0
@@ -60,6 +62,7 @@ export function createFields({ getDraft, update }) {
       errorEls[field],
       body);
     groups[field] = fieldset;
+    fieldset.dataset.field = field; // layout hook: app.css places groups by field on wide screens
     return fieldset;
   }
 
@@ -144,6 +147,7 @@ export function createFields({ getDraft, update }) {
         h('div', { class: 'scale-wrap' }, bar, foot),
         offTiles.length ? h('div', { class: 'scale-off' }, offTiles) : null));
     groups[field] = fieldset;
+    fieldset.dataset.field = field;
     return fieldset;
   }
 
@@ -165,6 +169,7 @@ export function createFields({ getDraft, update }) {
             h('span', { class: 'tile-label' }, option.label),
             option.description ? h('span', { class: 'tile-sub' }, option.description) : null)))));
     groups[field] = fieldset;
+    fieldset.dataset.field = field;
     return fieldset;
   }
 
@@ -182,6 +187,7 @@ export function createFields({ getDraft, update }) {
       hint ? h('p', { class: 'hint field-hint', id: `hint-${field}` }, hint) : null,
       input);
     groups[field] = wrap;
+    wrap.dataset.field = field;
     return wrap;
   }
 
@@ -196,7 +202,7 @@ export function createFields({ getDraft, update }) {
     futureWarning = h('p', { class: 'warn', hidden: true, role: 'status' },
       'This time is in the future. Check the date and time.');
     errorEls.occurred_at = h('p', { class: 'field-need' });
-    return h('div', { class: 'group' },
+    return h('div', { class: 'group', 'data-field': 'occurred_at' },
       h('label', { for: 'f-occurred_at', class: 'legend-like' }, label),
       errorEls.occurred_at,
       h('div', { class: 'when-row' }, whenInput,

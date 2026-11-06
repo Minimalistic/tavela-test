@@ -13,18 +13,25 @@ import { setShown } from './feedback.js';
 import { confirmLeave } from './leave.js';
 import { showSavedCard } from './saved.js';
 import { createTray } from './tray.js';
+import { keepDraft } from './drafts.js';
+import { stableJson } from '../draft.js';
 
-// With `record`, edits that entry (same id, SPEC §9).
-export async function renderCheckin(app, { record = null } = {}) {
+// With `record`, edits that entry (same id, SPEC §9). With `resume`, reopens
+// an unsaved entry kept on the device (draft.js), exactly as it was left.
+export async function renderCheckin(app, { record = null, resume = null } = {}) {
   const { store, settings } = app;
   const name = settings.display_name;
-  const editing = record !== null;
+  const editing = resume ? resume.editing : record !== null;
   const lastSite = editing ? null : await store.getMeta('last_site_code');
-  let draft = editing
-    ? structuredClone(record)
-    : newBathroomDraft({ id: crypto.randomUUID(), occurredAt: toOffsetIso(new Date()), siteCode: lastSite });
-  let pristine = JSON.stringify(draft);
+  let draft;
+  if (resume) draft = structuredClone(resume.data);
+  else if (editing) draft = structuredClone(record);
+  else draft = newBathroomDraft({ id: crypto.randomUUID(), occurredAt: toOffsetIso(new Date()), siteCode: lastSite });
+  // A resumed new entry is unsaved work from the start: it never counts as
+  // untouched. A resumed edit compares against the saved entry.
+  let pristine = resume && !editing ? '' : stableJson(editing ? record : draft);
   let saving = false;
+  let keeper = null;
 
   const {
     groups, radioGroup, scaleGroup, checkGroup, textField, whenGroup, syncInputs,
@@ -109,8 +116,9 @@ export async function renderCheckin(app, { record = null } = {}) {
 
     syncInputs(form, errors);
     tray.sync();
-    if (startOverButton) startOverButton.hidden = JSON.stringify(draft) === pristine;
+    if (startOverButton) startOverButton.hidden = stableJson(draft) === pristine;
     reminder.hidden = !showsConcernReminder(draft);
+    keeper?.changed();
 
     const missing = Object.keys(errors).length;
     // Save never greys out; after an early tap it carries the count.
@@ -132,7 +140,7 @@ export async function renderCheckin(app, { record = null } = {}) {
   function startOver() {
     const before = { draft, pristine };
     draft = newBathroomDraft({ id: draft.id, occurredAt: toOffsetIso(new Date()), siteCode: lastSite });
-    pristine = JSON.stringify(draft);
+    pristine = stableJson(draft);
     hideNeeds();
     sync();
     window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -177,6 +185,7 @@ export async function renderCheckin(app, { record = null } = {}) {
           console.warn('Tavela: could not remember last site:', err?.name ?? 'unknown error'));
       }
       app.leaveGuard = null;
+      await keeper.clear();
       if (editing) app.show('record', { record: result.record, saved: true });
       else showSavedCard(app, result.record);
       return;
@@ -186,7 +195,17 @@ export async function renderCheckin(app, { record = null } = {}) {
     sync();
   }
 
-  app.leaveGuard = () => confirmLeave(JSON.stringify(draft) !== pristine, editing);
+  const isDirty = () => stableJson(draft) !== pristine;
+  keeper = keepDraft(store, {
+    kind: 'bathroom', editing, baseUpdatedAt: record?.updated_at ?? null, resumed: resume,
+    getDraft: () => draft, isDirty, isLive: () => form.isConnected,
+  });
+  app.leaveGuard = async () => {
+    const dirty = isDirty();
+    const leave = await confirmLeave(dirty, editing);
+    if (leave && dirty) await keeper.clear();
+    return leave;
+  };
 
   sync();
   return form;

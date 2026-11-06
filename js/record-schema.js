@@ -165,3 +165,37 @@ export function sanitizeBackupData(data) {
     handoffs: sanitizeList(data.handoffs, sanitizeHandoff, 'handoffs'),
   };
 }
+
+// An unsaved form kept on the device (draft.js). Same fields and the same
+// field-by-field copy as a record, but nothing is required yet: any answer
+// may still be null, and text may be blank or past the form's limit while
+// someone is typing (Save says so then). The id, schema version and
+// Update type must be right, or it isn't a draft this version can reopen.
+export const MAX_DRAFT_TEXT = 5000;
+const KEEP_REQUIRED = new Set(['id', 'schema_version', 'summary_type']);
+const TEXT_FIELDS = new Set(Object.keys(TEXT_LIMITS));
+const draftText = (value, field) =>
+  (typeof value === 'string' && value.length <= MAX_DRAFT_TEXT ? value : fail(field));
+
+function draftFields(fields) {
+  return Object.fromEntries(Object.entries(fields).map(([field, check]) => {
+    if (KEEP_REQUIRED.has(field)) return [field, check];
+    const inner = TEXT_FIELDS.has(field) ? draftText : check;
+    return [field, (value, name) => (value === null ? null : inner(value, name))];
+  }));
+}
+
+const DRAFT_BATHROOM_FIELDS = draftFields(BATHROOM_FIELDS);
+const DRAFT_HANDOFF_FIELDS = Object.fromEntries(
+  Object.entries(HANDOFF_FIELDS).map(([type, fields]) => [type, draftFields(fields)]));
+
+export function sanitizeBathroomDraft(raw) {
+  // normalize, as the form does on every change: a hidden field never
+  // carries a value back in.
+  return bathroom.normalize(copyFields(raw, DRAFT_BATHROOM_FIELDS));
+}
+
+export function sanitizeHandoffDraft(raw) {
+  if (!isPlainObject(raw) || !Object.hasOwn(DRAFT_HANDOFF_FIELDS, raw.summary_type)) fail('summary_type');
+  return copyFields(raw, DRAFT_HANDOFF_FIELDS[raw.summary_type]);
+}

@@ -1,6 +1,6 @@
 import { h, ask } from './dom.js';
 import { openDb, createStore, deleteDb } from './db.js';
-import { storageRiskLine } from './storage-risk.js';
+import { storageRiskLine, storageRiskBanner } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
 import { entryFor, planNavigation, windowParams } from './nav.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
@@ -14,6 +14,8 @@ import { renderReports } from './views/reports.js';
 import { renderBackup, renderCreateBackup } from './views/backup.js';
 import { renderRestore } from './views/restore.js';
 import { renderExport } from './views/export.js';
+import { checkBeforeForm } from './views/drafts.js';
+import { followSystemTextSize } from './text-size.js';
 import { ensureDatasetId } from './dataset.js';
 import { migrateLocalData } from './migrations.js';
 import { BackupError } from './backup.js';
@@ -37,6 +39,7 @@ const VIEWS = {
 };
 
 const BACKUP_VIEWS = new Set(['backup', 'backup-create', 'restore']);
+const FORM_VIEWS = new Set(['checkin', 'handoff']);
 
 // Navigation is in-memory, not URL-based: no record ids or data ever land in
 // the address bar (SPEC §3). Each screen is also a browser history step
@@ -133,6 +136,13 @@ const app = {
     if (reloadForUpdate()) return;
     // Demo data must never go into a backup or be restored over (SPEC §16).
     if (app.demo && BACKUP_VIEWS.has(name)) name = 'home';
+    // An unsaved entry kept on the device is never replaced without a choice.
+    if (FORM_VIEWS.has(name) && !params.resume) {
+      const gate = await checkBeforeForm(app, () => ticket === showTicket);
+      if (ticket !== showTicket) return;
+      if (gate.resume) ({ name, params } = gate.resume);
+      else if (!gate.go) return;
+    }
     const main = document.getElementById('view');
     let view;
     try {
@@ -150,9 +160,13 @@ const app = {
     trackCovers();
     document.getElementById('home-link').hidden = name === 'home';
     window.scrollTo(0, 0);
-    // preventScroll: focusing <main> would scroll it to the top edge, under
-    // the header (and the demo banner), undoing the scrollTo above.
-    main.focus({ preventScroll: true });
+    // Focus the screen's heading so VoiceOver says which screen this is; an
+    // unnamed <main> is read as just "main". preventScroll: focusing would
+    // scroll it to the top edge, under the header (and the demo banner),
+    // undoing the scrollTo above.
+    const heading = view.querySelector('h1');
+    if (heading) heading.tabIndex = -1;
+    (heading ?? main).focus({ preventScroll: true });
     if (!fromHistory) recordStep(name, params);
     return 'shown';
   },
@@ -233,7 +247,9 @@ function updateCovers() {
   const top = height(document.getElementById('demo-banner')) + height(document.querySelector('.report-bar'));
   const root = document.documentElement.style;
   root.setProperty('--cover-top', `${top}px`);
-  root.setProperty('--cover-bottom', `${height(document.querySelector('.save-bar'))}px`);
+  const bar = document.querySelector('.save-bar');
+  if (bar) bar.classList.toggle('save-bar-inline', bar.offsetHeight > window.innerHeight / 4);
+  root.setProperty('--cover-bottom', `${bar && !bar.classList.contains('save-bar-inline') ? height(bar) : 0}px`);
 }
 
 function trackCovers() {
@@ -273,7 +289,9 @@ async function renderStorageRisk() {
   } catch (err) {
     console.warn('Tavela: storage.persisted() failed:', err?.name ?? 'unknown error');
   }
-  const line = storageRiskLine({ installed, persisted, demo: app.demo });
+  const state = { installed, persisted, demo: app.demo };
+  const line = storageRiskLine(state);
+  app.storageBanner = storageRiskBanner(state, { userAgent: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints });
   const el = document.getElementById('storage-risk');
   el.textContent = line ?? '';
   el.hidden = !line;
@@ -302,6 +320,9 @@ async function requestPersistence() {
 }
 
 async function boot() {
+  followSystemTextSize();
+  // Turning the device changes how much of the screen the Save bar covers.
+  window.addEventListener('resize', updateCovers);
   // Shown before anything can fail, and never dismissible: it is what keeps
   // real people's details out of a public test build.
   document.getElementById('test-build').hidden = !isDevHost(location.hostname);

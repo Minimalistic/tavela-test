@@ -38,7 +38,9 @@ export function deleteDb(name) {
 function finish(tx, result) {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve(result?.result);
-    tx.onerror = () => reject(tx.error);
+    // A failed request's error event reaches the transaction before it
+    // aborts, while tx.error is still null; the request holds the real one.
+    tx.onerror = (event) => reject(event?.target?.error ?? tx.error);
     tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'));
   });
 }
