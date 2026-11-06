@@ -5,7 +5,7 @@
 import { generateDemoData, DEMO_SEED } from './demo-data.js';
 import { toOffsetIso } from './time.js';
 
-export const DEMO_DB = 'tendwell-demo';
+export const DEMO_DB = 'tavela-demo';
 export const DEMO_FLAG = 'demo_active';
 
 export async function isDemoActive(realStore) {

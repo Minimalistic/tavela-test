@@ -3,6 +3,7 @@ import { openDb, createStore, deleteDb } from './db.js';
 import { storageRiskLine, storageRiskBanner } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
 import { entryFor, planNavigation, windowParams } from './nav.js';
+import { WIDE_QUERY, splitRecords } from './layout.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
@@ -31,7 +32,9 @@ const VIEWS = {
   handoff: renderHandoff,
   records: renderRecords,
   reports: renderReports,
-  record: renderRecord,
+  // On a wide screen an entry opens on the right of Records instead of on
+  // its own screen (ACCEPTANCE "Records side by side").
+  record: (app, params) => (app.isSplit() ? renderRecords(app, { selected: params.record, saved: params.saved }) : renderRecord(app, params)),
   backup: renderBackup,
   'backup-create': renderCreateBackup,
   restore: renderRestore,
@@ -53,6 +56,15 @@ const app = {
   settings: DEFAULT_SETTINGS,
   leaveGuard: null,
   recordFilters: null,
+  // The entry open on the right of Records on a wide screen (memory only).
+  recordPicked: null,
+  // The screen showing now, and whether it was drawn for a history step.
+  current: null,
+  navFromHistory: false,
+  isSplit: () => splitRecords({
+    wide: window.matchMedia?.(WIDE_QUERY).matches,
+    bigText: document.documentElement.classList.contains('big-text'),
+  }),
   reportWindow: null,
   refreshFooter: () => renderFooter(),
   // The dev-host "Clear all data". Clearing empties meta too, so the real
@@ -144,6 +156,7 @@ const app = {
       else if (!gate.go) return;
     }
     const main = document.getElementById('view');
+    app.navFromHistory = fromHistory;
     let view;
     try {
       view = await VIEWS[name](app, params);
@@ -157,6 +170,7 @@ const app = {
         h('button', { type: 'button', class: 'btn primary', onclick: () => app.show('home') }, 'Home'));
     }
     main.replaceChildren(view);
+    app.current = { name, params };
     trackCovers();
     document.getElementById('home-link').hidden = name === 'home';
     window.scrollTo(0, 0);
@@ -210,6 +224,20 @@ async function paramsFrom(kept = {}) {
     params.record = record;
   }
   return params;
+}
+
+// Turning an iPad redraws Records for the new width, without a history step.
+// Going narrow with an entry picked shows that entry on its own screen, so
+// the reader keeps their place (ACCEPTANCE "Records side by side").
+async function relayoutRecords() {
+  const current = app.current;
+  if (!current || (current.name !== 'records' && current.name !== 'record')) return;
+  if (!app.isSplit() && current.name === 'records' && app.recordPicked) {
+    await app.show('record', { record: app.recordPicked });
+    return;
+  }
+  // Records' one-off notice (an entry voided) isn't said again.
+  await app.show(current.name, current.name === 'records' ? {} : current.params, { fromHistory: true });
 }
 
 async function onHistoryStep(event) {
@@ -335,6 +363,7 @@ async function boot() {
   // Tavela itself draws it in under 15ms).
   history.scrollRestoration = 'manual';
   window.addEventListener('popstate', onHistoryStep);
+  window.matchMedia?.(WIDE_QUERY).addEventListener?.('change', relayoutRecords);
   document.getElementById('home-link').addEventListener('click', () => app.show('home'));
   document.getElementById('brand-home').addEventListener('click', () => app.show('home'));
   document.getElementById('leave-demo').addEventListener('click', () => app.leaveDemo().catch((err) => {
@@ -386,7 +415,7 @@ async function boot() {
 // change. Real builds keep the browser's default wait until the gated update
 // flow (SPEC §14, session 5), which never activates a version silently.
 let updateReady = false;
-const UPDATED_KEY = 'tendwell-updated';
+const UPDATED_KEY = 'tavela-updated';
 
 function applyTestUpdates(registration, hadVersion) {
   const promote = (worker) => worker.postMessage('skip-waiting');

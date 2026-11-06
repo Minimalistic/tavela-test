@@ -5,7 +5,7 @@ const DB_VERSION = 1;
 
 // The database keeps the app's first name (DECISIONS "Name"); renaming it
 // would leave every device's entries behind.
-export function openDb(name = 'tendwell') {
+export function openDb(name = 'tavela') {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, DB_VERSION);
     request.onupgradeneeded = () => {

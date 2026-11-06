@@ -7,7 +7,7 @@ import { DATASET_ID_PATTERN } from './dataset.js';
 
 // Keeps the app's first name (DECISIONS "Name") so every backup made so far
 // still restores; the tag is checked here and bound into the encryption.
-export const FORMAT = 'tendwell-backup';
+export const FORMAT = 'tavela-backup';
 // Compound extension: .json tells iPadOS what the file is (it previews,
 // AirDrops and attaches without questions); .tavela keeps it recognisable.
 // The app identifies a backup by `format` inside, never by the name.

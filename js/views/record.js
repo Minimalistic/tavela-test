@@ -5,7 +5,9 @@ import { saveVoid } from '../save.js';
 import { formatDateTime, formatTime } from '../time.js';
 import { entryTitle, answerRows } from '../record-text.js';
 
-export function renderRecord(app, { record, saved = false }) {
+// embedded: drawn on the right of Records on a wide screen (views/records.js),
+// where Records keeps the page's h1 and its list is already beside it.
+export function renderRecord(app, { record, saved = false, embedded = false }) {
   const name = app.settings.display_name;
   const handoff = Boolean(record.summary_type);
   const rows = [
@@ -48,7 +50,7 @@ export function renderRecord(app, { record, saved = false }) {
       type: 'button', class: 'btn danger',
       onclick: () => { actions.hidden = true; voidPanel.hidden = false; reasonInput.focus(); },
     }, icon('void'), ' Void'),
-    h('button', { type: 'button', class: 'btn', onclick: () => app.show('records') }, 'Back to records'));
+    embedded ? null : h('button', { type: 'button', class: 'btn', onclick: () => app.show('records') }, 'Back to records'));
 
   // One Update a day: a second one for the same date is refused, so this is
   // the way to catch up a missed day. The date starts blank, for picking.
@@ -61,7 +63,7 @@ export function renderRecord(app, { record, saved = false }) {
 
   return h('section', { class: 'record-detail' },
     saved ? h('p', { class: 'saved-inline', role: 'status' }, `✓ Changes saved ${app.demo ? 'to the demo data' : 'on this device'} · ${formatTime(record.updated_at)}`) : null,
-    h('h1', { class: `form-title area-${entryArea(record)}` }, icon(entryIcon(record), 30), handoff ? entryTitle(record) : 'Bathroom Check\u2011In'),
+    h(embedded ? 'h2' : 'h1', { class: `form-title area-${entryArea(record)}` }, icon(entryIcon(record), 30), handoff ? entryTitle(record) : 'Bathroom Check\u2011In'),
     record.voided_at
       ? h('p', { class: 'voided-banner' },
         h('strong', {}, 'Voided '), formatDateTime(record.voided_at),

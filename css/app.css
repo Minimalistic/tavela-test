@@ -554,7 +554,42 @@ dialog.saved-dialog::backdrop { background: transparent; }
   :root:not(.big-text) .entry-form.area-bathroom > [data-field=occurred_at] { grid-area: when; }
   :root:not(.big-text) .entry-form.area-bathroom > [data-field=site_code] { grid-area: where; }
   :root:not(.big-text) .entry-form.area-bathroom > [data-field=event_code] { grid-area: what; }
+
+  /* Reports and Backup (ACCEPTANCE part 2): as wide as the forms. Reports'
+     timeline gets the full width (more room per day); "What kind" puts its
+     sections two across under the card's heading. */
+  :root:not(.big-text) main:has(.reports, .backup) { max-width: 1200px; }
+  :root:not(.big-text) .kinds-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 32px; align-items: start; }
+  :root:not(.big-text) .kinds-card > .card-head { grid-column: 1 / -1; margin-bottom: -6px; }
+  :root:not(.big-text) .kinds-card .kind + .kind { margin-top: 0; }
+  /* Backup: the explanation and facts across the top; the three actions on
+     the left with the history beside them. */
+  :root:not(.big-text) .backup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-items: start; }
+  :root:not(.big-text) .backup > * { grid-column: 1 / -1; }
+  /* Grid items' margins don't collapse, so the gaps that collapsed in one
+     column are trimmed here. */
+  :root:not(.big-text) .backup > p { max-width: 70ch; margin-top: 0; }
+  :root:not(.big-text) .backup > .backup-actions, :root:not(.big-text) .backup > .history { grid-column: auto; }
+  :root:not(.big-text) .backup > .history, :root:not(.big-text) .backup > .history > :first-child { margin-top: 0; }
 }
+/* Records side by side (views/records.js adds .split on a wide screen, by
+   the same test as above): the list on the left, the open entry on the
+   right, held in view while the list scrolls under it, like iPad Mail. */
+main:has(.records.split) { max-width: 1200px; }
+.records-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; align-items: start; }
+.records-pane {
+  position: sticky;
+  top: calc(var(--cover-top, 0px) + 12px);
+  max-height: calc(100dvh - var(--cover-top, 0px) - 24px);
+  overflow-y: auto;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.records-pane .record-detail dl { grid-template-columns: minmax(120px, max-content) 1fr; }
+.records-pane .form-title { margin-top: 0; }
+.record-row[aria-current=true] { background: color-mix(in srgb, var(--area, var(--green)) 10%, var(--paper)); box-shadow: inset 0 0 0 2px var(--area, var(--green)); }
 /* With room to spare, the tray's buttons share one row with Save instead
    of a row of their own: on a wide screen that row was mostly empty, and
    on a phone on its side it was height the form needs. */

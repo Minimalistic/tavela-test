@@ -4,10 +4,8 @@
 // Milestone 1 uses the browser's default update lifecycle: a new version waits
 // until every Tavela window is closed. The gated, backup-first update flow
 // (SPEC §14) replaces this in session 5.
-const VERSION = '0.5.0-v91';
-// Cache, database and storage names keep the app's first name, "tendwell"
-// (DECISIONS "Name"): renaming them would orphan data already on devices.
-const CACHE = `tendwell-${VERSION}`;
+const VERSION = '0.5.0-v94';
+const CACHE = `tavela-${VERSION}`;
 
 const SHELL = [
   './',
@@ -43,6 +41,7 @@ const SHELL = [
   './js/export-log.js',
   './js/storage-risk.js',
   './js/text-size.js',
+  './js/layout.js',
   './js/nav.js',
   './js/views/home.js',
   './js/views/checkin.js',
@@ -80,7 +79,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) {
-      if (key.startsWith('tendwell-') && key !== CACHE) await caches.delete(key);
+      // Also clears caches from before the storage rename (DECISIONS "Storage
+      // names"), when they were called after the app's first name.
+      if ((key.startsWith('tavela-') || key.startsWith('tendwell-')) && key !== CACHE) await caches.delete(key);
     }
     await self.clients.claim();
   })());

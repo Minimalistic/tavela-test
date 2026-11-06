@@ -7,6 +7,8 @@ import { shortDate } from '../chart-draw.js';
 import { isDevHost } from '../dev-seed.js';
 import { DEMO_DAYS } from '../demo-data.js';
 import { entryArea, entryIcon } from '../areas.js';
+import { openEntry } from '../layout.js';
+import { renderRecord } from './record.js';
 
 const NO_FILTERS = { from: null, to: null, site: null, type: null, showVoided: false };
 
@@ -117,7 +119,12 @@ function recordRow(record, day, siteLabel, open) {
     record.handoff_note ? preview('note', 'Note', record.handoff_note) : null));
 }
 
-export async function renderRecords(app, { voided = null } = {}) {
+// selected/saved: an entry to show open (the record screen on a wide screen,
+// after an edit or from Home). On a wide screen (app.isSplit) the list and
+// the open entry sit side by side, like iPad Mail (ACCEPTANCE "Records side
+// by side"): picking a row redraws only the right side, with no history step,
+// so the list keeps its scroll and Back still leaves Records.
+export async function renderRecords(app, { voided = null, selected = null, saved = false } = {}) {
   const all = [
     ...await app.store.getAll('bathroom_events'),
     ...await app.store.getAll('handoffs'),
@@ -125,20 +132,58 @@ export async function renderRecords(app, { voided = null } = {}) {
   const filters = { ...NO_FILTERS, ...app.recordFilters };
   const shown = filterEntries(all, filters);
   const siteLabel = (code) => app.settings.site_labels[code] ?? code;
+  const split = app.isSplit();
 
-  return h('section', { class: 'records' },
+  // Opened afresh (Home, Reports, a filter change): the newest shows. Back
+  // from an Edit form, or a turn of the iPad, keeps the one picked.
+  if (selected) app.recordPicked = selected;
+  else if (!app.navFromHistory || voided) app.recordPicked = null;
+  const open = split ? (selected ?? openEntry(shown, app.recordPicked)) : null;
+
+  const pane = split ? h('div', { class: 'records-pane', role: 'region', 'aria-label': 'Open entry' }) : null;
+  const rows = new Map();
+  function showOpen(record, { focus = false, justSaved = false } = {}) {
+    for (const [id, button] of rows) button.setAttribute('aria-current', String(id === record?.id));
+    pane.replaceChildren(record
+      ? renderRecord(app, { record, saved: justSaved, embedded: true })
+      : h('p', { class: 'empty' }, 'Pick an entry to see it here.'));
+    if (focus) {
+      const heading = pane.querySelector('h2');
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    }
+  }
+  const pick = (record) => {
+    if (!split) {
+      app.show('record', { record });
+      return;
+    }
+    app.recordPicked = record;
+    showOpen(record, { focus: true });
+  };
+
+  const list = shown.length === 0
+    ? h('p', { class: 'empty' }, all.length === 0 ? 'No entries yet.' : 'No entries match these filters.')
+    : groupByDay(shown).map(({ day, records }) => {
+      const heading = dayHeading(day);
+      return h('section', { class: 'record-day', 'aria-label': heading },
+        h('h2', { class: 'record-day-title' }, heading, h('span', {}, `${records.length} ${records.length === 1 ? 'entry' : 'entries'}`)),
+        h('ul', { class: 'record-list' }, records.map((record) => {
+          const row = recordRow(record, heading, siteLabel, pick);
+          rows.set(record.id, row.querySelector('button'));
+          return row;
+        })));
+    });
+  if (split) showOpen(open, { justSaved: saved });
+
+  return h('section', { class: split ? 'records split' : 'records' },
     h('h1', { class: 'form-title' }, icon('records', 30), 'Records'),
     // Transient: history steps drop it, so going back doesn't repeat it.
     voided ? h('p', { class: 'voided-notice', role: 'status' }, icon('void'), ' ', voidedNotice(voided)) : null,
     isDevHost(location.hostname) ? devTools(app, all.length) : null,
     filterBar(app, filters),
     h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${all.length} ${all.length === 1 ? 'entry' : 'entries'} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),
-    shown.length === 0
-      ? h('p', { class: 'empty' }, all.length === 0 ? 'No entries yet.' : 'No entries match these filters.')
-      : groupByDay(shown).map(({ day, records }) => {
-        const heading = dayHeading(day);
-        return h('section', { class: 'record-day', 'aria-label': heading },
-          h('h2', { class: 'record-day-title' }, heading, h('span', {}, `${records.length} ${records.length === 1 ? 'entry' : 'entries'}`)),
-          h('ul', { class: 'record-list' }, records.map((record) => recordRow(record, heading, siteLabel, (r) => app.show('record', { record: r })))));
-      }));
+    // List first, then the open entry: the order screen readers and the
+    // keyboard follow.
+    split ? h('div', { class: 'records-split' }, h('div', { class: 'records-list' }, list), pane) : list);
 }
