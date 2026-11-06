@@ -159,7 +159,7 @@ export async function applyRestore(store, plan, { how, confirmation = '' }) {
     return { ok: true };
   } catch (err) {
     // Error name only: record contents never go to the console (SPEC §3).
-    console.error('Tavela: restore write failed:', err?.name ?? 'unknown error');
+    console.error('Handstead: restore write failed:', err?.name ?? 'unknown error');
     return { ok: false, message: NOT_RESTORED };
   }
 }

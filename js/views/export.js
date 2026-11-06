@@ -81,7 +81,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
         return;
       }
     } catch (err) {
-      console.error('Tavela: sharing the export failed:', err?.name ?? 'unknown error');
+      console.error('Handstead: sharing the export failed:', err?.name ?? 'unknown error');
       fail('The files could not be shared. Tap Save CSV Files to try again.');
       return;
     } finally {
@@ -92,7 +92,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
         at: toOffsetIso(new Date()), kind: 'csv', from, to, site, entries: built.entries, voided,
       });
     } catch (err) {
-      console.error('Tavela: recording the export failed:', err?.name ?? 'unknown error');
+      console.error('Handstead: recording the export failed:', err?.name ?? 'unknown error');
       fail('The files were saved, but the export wasn\'t added to the history.');
       return;
     }

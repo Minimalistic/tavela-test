@@ -3,9 +3,9 @@
 
 const DB_VERSION = 1;
 
-// The database keeps the app's first name (DECISIONS "Name"); renaming it
-// would leave every device's entries behind.
-export function openDb(name = 'tavela') {
+// Named after the app (DECISIONS "Storage names"). Renaming it leaves every
+// device's entries behind in the old database, so only before real use.
+export function openDb(name = 'handstead') {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, DB_VERSION);
     request.onupgradeneeded = () => {
@@ -17,7 +17,7 @@ export function openDb(name = 'tavela') {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Database upgrade blocked by another open Tavela window'));
+    request.onblocked = () => reject(new Error('Database upgrade blocked by another open Handstead window'));
   });
 }
 
@@ -29,7 +29,7 @@ export function deleteDb(name) {
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
     request.onblocked = () => {
-      console.warn(`Tavela: delete of ${name} is waiting for another window to close it`);
+      console.warn(`Handstead: delete of ${name} is waiting for another window to close it`);
       resolve();
     };
   });
@@ -67,7 +67,7 @@ export function createStore(firstDb, reopen = null) {
       return await operation(db);
     } catch (err) {
       if (!reopen || closed || !CONNECTION_LOST.has(err?.name)) throw err;
-      console.warn('Tavela: storage connection lost, reopening:', err.name);
+      console.warn('Handstead: storage connection lost, reopening:', err.name);
       // Operations failing together share one reopen.
       if (db === failedOn) {
         reopening ??= reopen().then((fresh) => {

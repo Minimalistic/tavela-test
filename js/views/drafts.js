@@ -7,7 +7,7 @@ import {
 } from '../draft.js';
 import { toOffsetIso } from '../time.js';
 
-const warn = (what, err) => console.warn(`Tavela: could not ${what} the unsaved entry:`, err?.name ?? 'unknown error');
+const warn = (what, err) => console.warn(`Handstead: could not ${what} the unsaved entry:`, err?.name ?? 'unknown error');
 
 export async function loadDraft(store) {
   return readDraft(await store.getMeta(DRAFT_KEY));
@@ -135,7 +135,7 @@ export async function resumeDraft(app, draft) {
   return opened;
 }
 
-const COULD_NOT_CHECK = 'Tavela couldn\u2019t open the unsaved entry just now. It\u2019s still kept. Try again.';
+const COULD_NOT_CHECK = 'Handstead couldn\u2019t open the unsaved entry just now. It\u2019s still kept. Try again.';
 const article = (name) => (/^[AEIOU]/.test(name) ? 'an' : 'a');
 
 // Home's card. Returns null when nothing is kept. A draft that can't be

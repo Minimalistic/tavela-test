@@ -93,7 +93,7 @@ export async function deliver(files, { download = false } = {}) {
       return true;
     } catch (err) {
       if (err?.name === 'AbortError') return false;
-      console.warn('Tavela: share sheet refused the file, downloading instead:', err?.name ?? 'unknown error');
+      console.warn('Handstead: share sheet refused the file, downloading instead:', err?.name ?? 'unknown error');
     }
   }
   for (const file of list) {
@@ -165,7 +165,7 @@ export function renderCreateBackup(app) {
       savePanel.hidden = false;
       note('');
     } catch (err) {
-      console.error('Tavela: backup failed:', err?.name ?? 'unknown error');
+      console.error('Handstead: backup failed:', err?.name ?? 'unknown error');
       fail(err instanceof BackupError
         ? `Backup not made: the new file failed its check (${err.detail ?? err.code}). Nothing was changed. Please report this.`
         : 'Backup not made. Nothing was changed. Try again.');
@@ -184,7 +184,7 @@ export function renderCreateBackup(app) {
         note('Not saved yet. Tap Save Backup File to try again.');
       }
     } catch (err) {
-      console.error('Tavela: sharing the backup failed:', err?.name ?? 'unknown error');
+      console.error('Handstead: sharing the backup failed:', err?.name ?? 'unknown error');
       fail('The file could not be shared. Tap Save Backup File to try again.');
     }
   }
@@ -196,7 +196,7 @@ export function renderCreateBackup(app) {
     try {
       await recordBackupSaved(app.store, { at: now, filename: file.name, entries });
     } catch (err) {
-      console.error('Tavela: recording the backup time failed:', err?.name ?? 'unknown error');
+      console.error('Handstead: recording the backup time failed:', err?.name ?? 'unknown error');
       fail('The backup file is fine, but the backup time was not recorded. Tap Yes again.');
       return;
     }

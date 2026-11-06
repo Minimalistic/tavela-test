@@ -21,11 +21,11 @@ function preview(kind, label, text) {
 export function devTools(app, total, view = 'records') {
   const status = h('p', { class: 'save-status', role: 'status' });
   const fail = (message) => (err) => {
-    console.error(`Tavela: ${message}:`, err?.name ?? 'unknown error');
+    console.error(`Handstead: ${message}:`, err?.name ?? 'unknown error');
     status.className = 'save-status failed';
     status.textContent = message === 'demo failed' ? 'Demo data was not created.' : 'Nothing was cleared.';
   };
-  const where = app.demo ? 'demo storage' : 'this browser\'s Tavela storage';
+  const where = app.demo ? 'demo storage' : 'this browser\'s Handstead storage';
   // Folded to one line so it doesn't crowd the screen it sits on; open on an
   // empty device, where demo data is the first thing a tester wants.
   return h('details', { class: 'dev-tools', open: total === 0 },
@@ -57,7 +57,7 @@ export function devTools(app, total, view = 'records') {
     }, app.demo ? 'Clear demo data' : 'Clear all data'),
     h('p', { class: 'hint' }, app.demo
       ? 'Test builds only. Demo data is fictional and kept in its own storage, apart from real entries. "Leave demo" in the yellow banner deletes it.'
-      : 'Test builds only. Demo data is fictional and kept in its own storage, apart from real entries. "Clear all data" empties this browser\'s Tavela storage.'),
+      : 'Test builds only. Demo data is fictional and kept in its own storage, apart from real entries. "Clear all data" empties this browser\'s Handstead storage.'),
     status);
 }
 

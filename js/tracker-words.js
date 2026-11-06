@@ -3,7 +3,7 @@
 // reordering any word changes every phrase. tests/tracker-phrase.test.js pins
 // a checksum. Drawn from the EFF short wordlists 1 and 2 (Electronic Frontier
 // Foundation, licensed Creative Commons Attribution 3.0 US; source and licence
-// links in THIRD_PARTY.md, since app files carry no external URLs), filtered for Tavela, then read by Jason (10-31): 3-7 letters, no homophones, nothing
+// links in THIRD_PARTY.md, since app files carry no external URLs), filtered for Handstead, then read by Jason (10-31): 3-7 letters, no homophones, nothing
 // medical, bodily, bathroom-adjacent, behavioural, dietary, religious, rude,
 // loaded, brand-named or already used as app vocabulary.
 export const TRACKER_WORDS = Object.freeze([

@@ -149,7 +149,7 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
       saveStatus.textContent = '';
       if (!editing) {
         store.setMeta('last_site_code', result.record.site_code).catch((err) =>
-          console.warn('Tavela: could not remember last site:', err?.name ?? 'unknown error'));
+          console.warn('Handstead: could not remember last site:', err?.name ?? 'unknown error'));
       }
       app.leaveGuard = null;
       await keeper.clear();

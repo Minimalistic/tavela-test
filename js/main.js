@@ -163,7 +163,7 @@ const app = {
     } catch (err) {
       // A screen that throws would otherwise leave the old one frozen with no
       // word of what happened. Saved data isn't touched by drawing a screen.
-      console.error(`Tavela: could not open ${name}:`, err?.name ?? 'unknown error');
+      console.error(`Handstead: could not open ${name}:`, err?.name ?? 'unknown error');
       view = h('section', {},
         h('p', { class: 'save-status failed', role: 'alert' },
           'This screen could not open. Your saved entries are not affected. Go back Home and try again; if it keeps happening, close the app fully and open it again.'),
@@ -189,7 +189,7 @@ const app = {
 // The app's own view of its history steps: stack[depth] is the current one.
 // A step the app goes back to itself fires a popstate it must not redraw for.
 const nav = { stack: [entryFor('home')], depth: 0, ignorePops: 0 };
-const stateOf = (entry, depth) => ({ tavela: 1, depth, view: entry.view, params: entry.params });
+const stateOf = (entry, depth) => ({ handstead: 1, depth, view: entry.view, params: entry.params });
 
 function recordStep(name, params) {
   const target = entryFor(name, params);
@@ -245,7 +245,7 @@ async function onHistoryStep(event) {
     nav.ignorePops--;
     return;
   }
-  const state = event.state?.tavela && VIEWS[event.state.view] ? event.state : stateOf(entryFor('home'), 0);
+  const state = event.state?.handstead && VIEWS[event.state.view] ? event.state : stateOf(entryFor('home'), 0);
   const from = nav.depth;
   const params = await paramsFrom(state.params);
   const [view, shownParams] = params ? [state.view, params] : ['records', {}];
@@ -315,7 +315,7 @@ async function renderStorageRisk() {
   try {
     persisted = (await navigator.storage?.persisted?.()) ?? null;
   } catch (err) {
-    console.warn('Tavela: storage.persisted() failed:', err?.name ?? 'unknown error');
+    console.warn('Handstead: storage.persisted() failed:', err?.name ?? 'unknown error');
   }
   const state = { installed, persisted, demo: app.demo };
   const line = storageRiskLine(state);
@@ -343,14 +343,14 @@ async function requestPersistence() {
     const granted = await navigator.storage.persist();
     await app.realStore.setMeta('storage_persist_granted', granted);
   } catch (err) {
-    console.warn('Tavela: storage.persist() failed:', err?.name ?? 'unknown error');
+    console.warn('Handstead: storage.persist() failed:', err?.name ?? 'unknown error');
   }
 }
 
 async function boot() {
   followSystemTextSize();
   // So a tester can say which version they're on (DECISIONS "Versions").
-  document.getElementById('app-version').textContent = `Tavela ${APP_VERSION}`;
+  document.getElementById('app-version').textContent = `Handstead ${APP_VERSION}`;
   // Turning the device changes how much of the screen the Save bar covers.
   window.addEventListener('resize', updateCovers);
   // Shown before anything can fail, and never dismissible: it is what keeps
@@ -362,22 +362,22 @@ async function boot() {
   // Every screen scrolls itself to the top (app.show). Telling the browser so
   // stops Safari's swipe-back holding its snapshot while it waits to restore
   // a scroll position (Jason, 10-31: the screen took a long time to appear;
-  // Tavela itself draws it in under 15ms).
+  // Handstead itself draws it in under 15ms).
   history.scrollRestoration = 'manual';
   window.addEventListener('popstate', onHistoryStep);
   window.matchMedia?.(WIDE_QUERY).addEventListener?.('change', relayoutRecords);
   document.getElementById('home-link').addEventListener('click', () => app.show('home'));
   document.getElementById('brand-home').addEventListener('click', () => app.show('home'));
   document.getElementById('leave-demo').addEventListener('click', () => app.leaveDemo().catch((err) => {
-    console.error('Tavela: leaving demo failed:', err?.name ?? 'unknown error');
+    console.error('Handstead: leaving demo failed:', err?.name ?? 'unknown error');
   }));
   try {
     app.realStore = createStore(await openDb(), () => openDb());
     app.store = app.realStore;
   } catch (err) {
-    console.error('Tavela: could not open storage:', err?.name ?? 'unknown error');
+    console.error('Handstead: could not open storage:', err?.name ?? 'unknown error');
     document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
-      'Tavela could not open its storage on this device. Nothing can be saved right now. Close the app fully and open it again.'));
+      'Handstead could not open its storage on this device. Nothing can be saved right now. Close the app fully and open it again.'));
     return;
   }
   try {
@@ -386,18 +386,18 @@ async function boot() {
   } catch (err) {
     // Nothing was changed (one transaction). Stop rather than write over data
     // this version doesn't understand.
-    console.error('Tavela: could not prepare stored data:', err?.name ?? 'unknown error');
+    console.error('Handstead: could not prepare stored data:', err?.name ?? 'unknown error');
     document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
       err instanceof BackupError && err.code === 'newer'
-        ? 'The data on this device was saved by a newer version of Tavela. Nothing was changed. Update the app to keep using it.'
-        : 'Tavela could not prepare its data on this device. Nothing was changed. Close the app fully and open it again.'));
+        ? 'The data on this device was saved by a newer version of Handstead. Nothing was changed. Update the app to keep using it.'
+        : 'Handstead could not prepare its data on this device. Nothing was changed. Close the app fully and open it again.'));
     return;
   }
   try {
     if (await isDemoActive(app.realStore)) useDemo(await openDemoStore());
   } catch (err) {
     // Fall back to real data, with no banner, which is the truth.
-    console.error('Tavela: could not open demo storage:', err?.name ?? 'unknown error');
+    console.error('Handstead: could not open demo storage:', err?.name ?? 'unknown error');
   }
   await requestPersistence();
   await renderFooter();
@@ -408,16 +408,16 @@ async function boot() {
     const hadVersion = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker.register('./sw.js')
       .then((registration) => { if (isDevHost(location.hostname)) applyTestUpdates(registration, hadVersion); })
-      .catch((err) => console.error('Tavela: offline support failed to install:', err?.name ?? 'unknown error'));
+      .catch((err) => console.error('Handstead: offline support failed to install:', err?.name ?? 'unknown error'));
   }
 }
 
 // Test builds (localhost, the tailnet, tavela-test.marsh.city) take a new version as soon as it's
-// downloaded, so a phone doesn't need every Tavela window closed to see a
+// downloaded, so a phone doesn't need every Handstead window closed to see a
 // change. Real builds keep the browser's default wait until the gated update
 // flow (SPEC §14, session 5), which never activates a version silently.
 let updateReady = false;
-const UPDATED_KEY = 'tavela-updated';
+const UPDATED_KEY = 'handstead-updated';
 
 function applyTestUpdates(registration, hadVersion) {
   const promote = (worker) => worker.postMessage('skip-waiting');
@@ -457,7 +457,7 @@ function showUpdatedNote() {
     sessionStorage.removeItem(UPDATED_KEY);
   } catch { /* no note without storage */ }
   if (!updated) return;
-  const note = h('p', { class: 'toast update-note', role: 'status' }, `Updated to Tavela ${APP_VERSION}.`);
+  const note = h('p', { class: 'toast update-note', role: 'status' }, `Updated to Handstead ${APP_VERSION}.`);
   document.body.append(note);
   setTimeout(() => note.remove(), 4000);
 }

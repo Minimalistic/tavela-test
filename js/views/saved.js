@@ -45,7 +45,7 @@ export function showSavedCard(app, record) {
       await app.show('home');
     } catch (err) {
       // Never leave the card stuck over the app; the form stays behind it.
-      console.warn('Tavela: could not draw Home after saving:', err?.name ?? 'unknown error');
+      console.warn('Handstead: could not draw Home after saving:', err?.name ?? 'unknown error');
       return finish();
     }
     if (reduceMotion()) return finish();

@@ -5,30 +5,31 @@
 // (restore.js validates those).
 import { DATASET_ID_PATTERN } from './dataset.js';
 
-// Keeps the app's first name (DECISIONS "Name") so every backup made so far
-// still restores; the tag is checked here and bound into the encryption.
-export const FORMAT = 'tavela-backup';
+// Named after the app (DECISIONS "Storage names"). The tag is checked here and
+// bound into the encryption, so changing it stops every earlier backup from
+// restoring: only before real use.
+export const FORMAT = 'handstead-backup';
 // Compound extension: .json tells iPadOS what the file is (it previews,
-// AirDrops and attaches without questions); .tavela keeps it recognisable.
+// AirDrops and attaches without questions); .handstead keeps it recognisable.
 // The app identifies a backup by `format` inside, never by the name.
-export const EXTENSION = '.tavela.json';
+export const EXTENSION = '.handstead.json';
 export const ENVELOPE_VERSION = 1;
 // The app's version (DECISIONS "Versions"): semver, bumped when something
 // ships to testers, never per edit. Shown in the footer and stamped on
 // backups; sw.js and package.json match it (tests check both).
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 const MESSAGES = {
-  not_a_backup: 'This file isn\'t a Tavela backup. Nothing was changed.',
-  too_large: 'This file is too large to be a Tavela backup. Nothing was changed.',
+  not_a_backup: 'This file isn\'t a Handstead backup. Nothing was changed.',
+  too_large: 'This file is too large to be a Handstead backup. Nothing was changed.',
   newer: 'This backup was made by a newer version. Update the app first.',
   wrong_passphrase: 'The passphrase didn\'t open this backup. Check it and try again. If it is right, the file may be damaged. Nothing was changed.',
   damaged: 'This backup file is damaged or incomplete. Nothing was changed.',
-  invalid: 'This backup holds entries Tavela can\'t read, so none were used. Nothing was changed.',
+  invalid: 'This backup holds entries Handstead can\'t read, so none were used. Nothing was changed.',
 };
 
 export class BackupError extends Error {
@@ -182,7 +183,7 @@ export async function decryptPayload(header, passphrase) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-// TRK-7F3K9Q_backup_2026-10-20_1800.tavela.json, in local time.
+// TRK-7F3K9Q_backup_2026-10-20_1800.handstead.json, in local time.
 export function backupFilename(datasetId, date) {
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   return `${datasetId}_backup_${day}_${pad(date.getHours())}${pad(date.getMinutes())}${EXTENSION}`;

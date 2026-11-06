@@ -2,7 +2,7 @@
 // "Storage at risk"). Safari tabs can lose site data after days unused, and an
 // app added to the Home Screen is exempt; elsewhere a persistence grant
 // protects it. persisted is true, false, or null when the browser can't say.
-export const STORAGE_AT_RISK = 'Install Tavela to protect your records.';
+export const STORAGE_AT_RISK = 'Install Handstead to protect your records.';
 
 export function storageRiskLine({ installed, persisted, demo }) {
   // Demo data is throwaway, and the demo footer already says so.
@@ -16,16 +16,16 @@ export function storageRiskLine({ installed, persisted, demo }) {
 // "Shorter install banner"). It can't be dismissed: it goes away once the
 // risk does (installed, or a grant).
 export const STORAGE_BANNER = {
-  title: 'Install Tavela to protect your records',
+  title: 'Install Handstead to protect your records',
   more: 'How to install',
 };
 
 // The steps differ by device, in each one's own words. iPadOS Safari calls
 // itself a Mac, so a Mac user agent with touch points is an iPad.
 export const INSTALL_STEPS = {
-  apple: ['Tap Share (the square with an arrow).', 'Tap Add to Home Screen.', 'Open Tavela from the new icon.'],
-  android: ['Tap ⋮ at the top right of Chrome.', 'Tap Install app or Add to Home screen.', 'Open Tavela from the new icon.'],
-  other: ["Use your browser's Install or Add to Home Screen option.", 'Open Tavela from there.'],
+  apple: ['Tap Share (the square with an arrow).', 'Tap Add to Home Screen.', 'Open Handstead from the new icon.'],
+  android: ['Tap ⋮ at the top right of Chrome.', 'Tap Install app or Add to Home screen.', 'Open Handstead from the new icon.'],
+  other: ["Use your browser's Install or Add to Home Screen option.", 'Open Handstead from there.'],
 };
 
 export function installPlatform({ userAgent = '', maxTouchPoints = 0 } = {}) {

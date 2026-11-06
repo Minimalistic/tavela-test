@@ -52,7 +52,7 @@ export function followsTextSize({ supportsKeyword, maxTouchPoints }) {
 }
 
 // Read at start, and again on coming back to the app: the setting is
-// usually changed in Settings while Tavela waits in the background.
+// usually changed in Settings while Handstead waits in the background.
 export function followSystemTextSize(doc = document) {
   if (!followsTextSize({
     supportsKeyword: globalThis.CSS?.supports?.('font', '-apple-system-body'),

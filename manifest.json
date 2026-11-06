@@ -1,6 +1,6 @@
 {
-  "name": "Tavela",
-  "short_name": "Tavela",
+  "name": "Handstead",
+  "short_name": "Handstead",
   "description": "Private daily care observations, stored only on this device.",
   "start_url": "./",
   "scope": "./",

@@ -9,14 +9,14 @@ export const NOT_SAVED = 'Not saved. Your entry is still here. Try Save again.';
 export const NOT_VOIDED = 'Not saved. The entry was not voided. Try again.';
 // The store already reopened once and failed again, so Save won't work until
 // the app restarts. Closing loses the form, hence "note it down".
-export const STORAGE_LOST = 'Not saved. Tavela lost its connection to storage on this device. ' +
-  'Your entry is still here: note it down, then close Tavela fully and open it again.';
+export const STORAGE_LOST = 'Not saved. Handstead lost its connection to storage on this device. ' +
+  'Your entry is still here: note it down, then close Handstead fully and open it again.';
 
 // A record the backup check would refuse is never written: one such record
 // would make every later backup fail (createBackup opens its own file the way
 // a restore does). Names the field, never its value.
 export const notBackupSafe = (field) =>
-  `Not saved: this entry has something Tavela couldn't back up (${field}). Your entry is still here. Please report this.`;
+  `Not saved: this entry has something Handstead couldn't back up (${field}). Your entry is still here. Please report this.`;
 
 // Text past its limit is the person's to fix, so it says how, not "report".
 export function tooLong(field, length) {
@@ -28,7 +28,7 @@ export function tooLong(field, length) {
 
 function failed(storeName, err, failMessage) {
   // Error name only: record contents never go to the console (SPEC §3).
-  console.error(`Tavela: ${storeName} write failed:`, err?.name ?? 'unknown error');
+  console.error(`Handstead: ${storeName} write failed:`, err?.name ?? 'unknown error');
   return { ok: false, message: CONNECTION_LOST.has(err?.name) ? STORAGE_LOST : failMessage };
 }
 
@@ -42,7 +42,7 @@ async function write(store, record, failMessage) {
     check(record);
   } catch (err) {
     if (!(err instanceof InvalidRecord)) return failed(storeFor(record), err, failMessage);
-    console.error(`Tavela: ${storeFor(record)} record failed the backup check:`, err.field);
+    console.error(`Handstead: ${storeFor(record)} record failed the backup check:`, err.field);
     const value = record[err.field];
     if (Object.hasOwn(TEXT_LIMITS, err.field) && typeof value === 'string' && value.length > TEXT_LIMITS[err.field]) {
       return { ok: false, message: tooLong(err.field, value.length) };

@@ -60,7 +60,7 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
       if (err instanceof BackupError) {
         fail(err.detail ? `${err.message} (${err.detail})` : err.message);
       } else {
-        console.error('Tavela: opening a backup failed:', err?.name ?? 'unknown error');
+        console.error('Handstead: opening a backup failed:', err?.name ?? 'unknown error');
         fail('This file could not be opened. Nothing was changed.');
       }
     } finally {
@@ -75,7 +75,7 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
     try {
       outcome = await applyRestore(app.store, plan, { how, confirmation });
     } catch (err) {
-      console.error('Tavela: restore refused:', err?.name ?? 'unknown error');
+      console.error('Handstead: restore refused:', err?.name ?? 'unknown error');
       outcome = { ok: false, message: 'Not restored. Nothing on this device was changed.' };
     }
     button.disabled = false;

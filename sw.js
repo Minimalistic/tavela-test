@@ -1,13 +1,13 @@
-// Precaches the whole app shell so Tavela runs with no network at all.
+// Precaches the whole app shell so Handstead runs with no network at all.
 // VERSION is APP_VERSION plus "+dev" here; tools/publish-test.sh stamps the
 // commit into the published copy (0.6.0+d66fabc), so every published build
 // gets a fresh cache with no hand-kept counter (DECISIONS "Versions").
 //
 // Milestone 1 uses the browser's default update lifecycle: a new version waits
-// until every Tavela window is closed. The gated, backup-first update flow
+// until every Handstead window is closed. The gated, backup-first update flow
 // (SPEC §14) replaces this in session 5.
-const VERSION = '0.6.0+dafc0cd';
-const CACHE = `tavela-${VERSION}`;
+const VERSION = '0.7.0+5a62ede';
+const CACHE = `handstead-${VERSION}`;
 
 const SHELL = [
   './',
@@ -82,8 +82,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) {
       // Also clears caches from before the storage rename (DECISIONS "Storage
-      // names"), when they were called after the app's first name.
-      if ((key.startsWith('tavela-') || key.startsWith('tendwell-')) && key !== CACHE) await caches.delete(key);
+      // names"), when they were called after the app's earlier names.
+      if ((key.startsWith('handstead-') || key.startsWith('tavela-') || key.startsWith('tendwell-')) && key !== CACHE) await caches.delete(key);
     }
     await self.clients.claim();
   })());
