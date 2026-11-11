@@ -1,4 +1,5 @@
 import { h, icon } from '../dom.js';
+import { plural } from '../words.js';
 import { BackupError, MAX_FILE_BYTES } from '../backup.js';
 import { openBackup, planRestore, applyRestore, readLocal } from '../restore.js';
 import { formatDateTime } from '../time.js';
@@ -6,7 +7,7 @@ import { entryTitle } from '../record-text.js';
 import { phraseFor, trackerFromTyped } from '../tracker-phrase.js';
 import { passphraseInput, showPassphraseToggle, trackerFact } from './backup.js';
 
-const entries = (n) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
+const entries = (n) => plural(n, 'entry', 'entries');
 
 const named = (id) => (phraseFor(id) ? `${phraseFor(id)} (${id})` : id);
 

@@ -135,6 +135,12 @@ export function csvFilename({ datasetId, kind, from, to, demo = false }) {
   return `${demo ? 'DEMO_' : ''}${datasetId}_${kind}_${from}_to_${to}.csv`;
 }
 
+// The print job's title, which a "Save as PDF" uses as the file name (SPEC
+// §12's filename rule: never a name, only the Tracker ID and dates).
+export function reportTitle({ datasetId, from, to, demo = false }) {
+  return `${demo ? 'DEMO_' : ''}${datasetId}_report_${from}_to_${to}`;
+}
+
 // Returns { files: [{ filename, text, rows }], entries } for one window.
 // Both files are always made, so a team's folder has a matching pair even
 // when one kind had no entries (header only).

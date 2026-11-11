@@ -1,10 +1,10 @@
 import { h } from '../dom.js';
+import { reduceMotion } from './feedback.js';
 import { ENTRY_TYPES, entryType } from '../entries.js';
 import { formatTime } from '../time.js';
 
 const HOLD_MS = 10000;
 const DISSOLVE_MS = 1400;
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // After a new entry saves: the form softens and dims behind a card with ✓,
 // "Saved", and the kind of entry and its time, never what happened (the

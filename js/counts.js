@@ -6,11 +6,7 @@ import { filterEntries } from './entries.js';
 import { localDate } from './time.js';
 import { BRISTOL, BOWEL_CARE_STATUS } from './bathroom.js';
 import { BEHAVIORS } from './handoff.js';
-
-const URINATIONS = new Set(['pee', 'both', 'urine_accident']);
-const BMS = new Set(['bm', 'both', 'stool_accident']);
-const APPEARANCE = new Set(['darker', 'cloudy', 'pink_red', 'other']);
-const INCOMPLETE_COVERAGE = new Set(['some_missing', 'unsure']);
+import { isUrination, isBm, urineLookedDifferent, strongSmell, hadPain, isFlushCare, coverageIncomplete } from './matches.js';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const pad = (n) => String(n).padStart(2, '0');
@@ -58,7 +54,7 @@ export function daysSinceLastBm(records, today = new Date()) {
   const todayKey = dateKey(today);
   let latest = null;
   for (const record of records) {
-    if (record.voided_at || !BMS.has(record.event_code)) continue;
+    if (record.voided_at || !isBm(record)) continue;
     const day = localDate(record.occurred_at);
     if (day > todayKey) continue;
     if (latest === null || day > latest) latest = day;
@@ -70,7 +66,7 @@ export function daysSinceLastBm(records, today = new Date()) {
 // whole dataset like daysSinceLastBm(). null until the first BM.
 export function bmGapByDay(records, days) {
   const bmDates = [...new Set(records
-    .filter((record) => !record.voided_at && BMS.has(record.event_code))
+    .filter((record) => !record.voided_at && isBm(record))
     .map((record) => localDate(record.occurred_at)))].sort();
   const gaps = {};
   let latest = -1;
@@ -139,22 +135,20 @@ export function computeCounts(records, { from, to, site = null }, today = new Da
       continue;
     }
     const event = record.event_code;
-    if (URINATIONS.has(event)) {
+    if (isUrination(record)) {
       counts.urinations.total += 1;
       counts.urinations.byDay[day] += 1;
-      // Appearance and odor are read only where the urine question was asked.
-      const details = record.urine_change_details;
-      if (details.some((code) => APPEARANCE.has(code))) {
+      if (urineLookedDifferent(record)) {
         counts.appearanceChanges.total += 1;
         counts.appearanceChanges.byDay[day] += 1;
       }
-      if (details.includes('strong_odor')) {
+      if (strongSmell(record)) {
         counts.odor.total += 1;
         counts.odor.byDay[day] += 1;
       }
       if (record.urine_change_code === 'not_assessed') counts.urineNotAssessed += 1;
     }
-    if (BMS.has(event)) {
+    if (isBm(record)) {
       counts.bms.total += 1;
       counts.bms.byDay[day] += 1;
       counts.bristol[record.bristol_type] += 1;
@@ -170,12 +164,12 @@ export function computeCounts(records, { from, to, site = null }, today = new Da
       counts.accidents.stoolByDay[day] += 1;
     }
     if (event === 'attempt_no_output') counts.attempts += 1;
-    if (event === 'bowel_care') {
+    if (isFlushCare(record)) {
       counts.flushCare.total += 1;
       counts.flushCare.byStatus[record.bowel_care_status] += 1;
       counts.flushCare.byDay[day].push(record.bowel_care_status);
     }
-    if (record.pain_code === 'yes') {
+    if (hadPain(record)) {
       counts.pain.total += 1;
       counts.pain.byDay[day] += 1;
       painDates.add(day);
@@ -212,5 +206,5 @@ function countHandoff(counts, record, day, comfortSums) {
   // newest first, so the first one seen wins).
   const slot = counts.coverage.byDay[day];
   if (slot[type] === null) slot[type] = record.bathroom_coverage_code;
-  if (INCOMPLETE_COVERAGE.has(record.bathroom_coverage_code)) counts.coverage.incomplete += 1;
+  if (coverageIncomplete(record)) counts.coverage.incomplete += 1;
 }

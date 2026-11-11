@@ -1,16 +1,18 @@
 import { h, ask, icon } from '../dom.js';
 import { entryTitle, voidedNotice } from '../record-text.js';
-import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary } from '../entries.js';
-import { siteOptions } from '../settings.js';
+import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary, batchEnd } from '../entries.js';
+import { matchRule } from '../matches.js';
+import { siteLabel, siteOptions } from '../settings.js';
+import { plural } from '../words.js';
 import { formatTime, dayHeading } from '../time.js';
 import { shortDate } from '../chart-draw.js';
-import { isDevHost } from '../dev-seed.js';
+import { isDevHost } from '../hosts.js';
 import { DEMO_DAYS } from '../demo-data.js';
 import { entryArea, entryIcon } from '../areas.js';
 import { openEntry } from '../layout.js';
 import { renderRecord } from './record.js';
 
-const NO_FILTERS = { from: null, to: null, site: null, type: null, showVoided: false };
+const NO_FILTERS = { from: null, to: null, site: null, type: null, match: null, showVoided: false };
 
 function preview(kind, label, text) {
   return h('span', { class: `record-note record-${kind}` },
@@ -45,7 +47,7 @@ export function devTools(app, total, view = 'records') {
       onclick: async () => {
         const choice = await ask({
           title: app.demo ? 'Clear the demo data?' : 'Clear all data on this device?',
-          body: `This deletes all ${total} ${total === 1 ? 'entry' : 'entries'} and the remembered settings in ${where}. It can't be undone.`,
+          body: `This deletes all ${plural(total, 'entry', 'entries')} and the remembered settings in ${where}. It can't be undone.`,
           buttons: [
             { label: 'Clear everything', value: 'clear', kind: 'danger' },
             { label: 'Cancel', value: 'cancel', kind: 'primary' },
@@ -64,31 +66,31 @@ export function devTools(app, total, view = 'records') {
 function filterBar(app, filters) {
   // Filters live on the app object (memory only), so they survive opening an
   // entry and coming back, and never reach the URL.
-  const apply = (changes) => {
+  const apply = (changes, event) => {
     app.recordFilters = { ...filters, ...changes };
-    app.show('records');
+    app.show('records', {}, { keepPlace: event.currentTarget.id });
   };
   const select = (id, label, options, value, key) => h('label', { class: 'filter', for: id }, label,
-    h('select', { id, onchange: (event) => apply({ [key]: event.target.value || null }) },
+    h('select', { id, onchange: (event) => apply({ [key]: event.target.value || null }, event) },
       h('option', { value: '' }, 'All'),
       options.map((option) => h('option', { value: option.code, selected: option.code === value }, option.label))));
   const date = (id, label, value, key) => h('label', { class: 'filter', for: id }, label,
-    h('input', { id, type: 'date', value: value ?? '', onchange: (event) => apply({ [key]: event.target.value || null }) }));
+    h('input', { id, type: 'date', value: value ?? '', onchange: (event) => apply({ [key]: event.target.value || null }, event) }));
 
   const active = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
   const said = filterSummary(filters, {
-    siteLabel: (code) => app.settings.site_labels[code] ?? code,
+    siteLabel: (code) => siteLabel(app.settings, code),
     typeLabel: (code) => ENTRY_TYPES.find((t) => t.code === code)?.label ?? code,
     shortDate,
   });
   // Folded to one line that says what's filtered, so the list starts near the
   // top of a phone screen; a tap opens the controls. Each change redraws
   // Records, so whether it's open is kept on the app (memory only).
-  return h('details', {
+  const fold = h('details', {
     class: 'filters-fold', open: app.recordFiltersOpen === true,
     ontoggle: (event) => { app.recordFiltersOpen = event.target.open; },
   },
-    h('summary', {}, h('span', { class: 'filters-label' }, 'Filters'), ' ', h('span', { class: 'filters-said' }, said ?? 'None')),
+    h('summary', { id: 'filters-summary' }, h('span', { class: 'filters-label' }, 'Filters'), ' ', h('span', { class: 'filters-said' }, said ?? 'None')),
     h('fieldset', { class: 'filters' },
     h('legend', { class: 'visually-hidden' }, 'Filter entries'),
     date('filter-from', 'From', filters.from, 'from'),
@@ -96,9 +98,21 @@ function filterBar(app, filters) {
     select('filter-site', 'Where', siteOptions(app.settings), filters.site, 'site'),
     select('filter-type', 'Type', ENTRY_TYPES, filters.type, 'type'),
     h('label', { class: 'filter filter-check' },
-      h('input', { type: 'checkbox', checked: filters.showVoided, onchange: (event) => apply({ showVoided: event.target.checked }) }),
+      h('input', { id: 'filter-voided', type: 'checkbox', checked: filters.showVoided, onchange: (event) => apply({ showVoided: event.target.checked }, event) }),
       ' Show voided'),
-    active ? h('button', { type: 'button', class: 'btn small', onclick: () => apply(NO_FILTERS) }, 'Clear filters') : null));
+    active ? h('button', { type: 'button', class: 'btn small', onclick: (event) => apply(NO_FILTERS, event) }, 'Clear filters') : null));
+  // A tapped Reports total narrows the list to what it counted. There's no
+  // control for it in the filters, so it's said, and removable, in view.
+  if (!filters.match) return fold;
+  return [fold, h('p', { class: 'filter-match' },
+    'Only ', h('strong', {}, matchRule(filters.match)?.label ?? filters.match), ' ',
+    h('button', {
+      type: 'button', class: 'btn small',
+      onclick: () => {
+        app.recordFilters = { ...filters, match: null };
+        app.show('records', {}, { keepPlace: 'filters-summary' });
+      },
+    }, 'Show all kinds'))];
 }
 
 function recordRow(record, day, siteLabel, open) {
@@ -131,7 +145,6 @@ export async function renderRecords(app, { voided = null, selected = null, saved
   ];
   const filters = { ...NO_FILTERS, ...app.recordFilters };
   const shown = filterEntries(all, filters);
-  const siteLabel = (code) => app.settings.site_labels[code] ?? code;
   const split = app.isSplit();
 
   // Opened afresh (Home, Reports, a filter change): the newest shows. Back
@@ -162,18 +175,49 @@ export async function renderRecords(app, { voided = null, selected = null, saved
     showOpen(record, { focus: true });
   };
 
+  const daySection = ({ day, records }) => {
+    const heading = dayHeading(day);
+    return h('section', { class: 'record-day', 'aria-label': heading },
+      h('h2', { class: 'record-day-title' }, heading, h('span', {}, plural(records.length, 'entry', 'entries'))),
+      h('ul', { class: 'record-list' }, records.map((record) => {
+        const row = recordRow(record, heading, (code) => siteLabel(app.settings, code), pick);
+        rows.set(record.id, row.querySelector('button'));
+        return row;
+      })));
+  };
+
+  // A screen's worth of days at a time (ACCEPTANCE "Show earlier"). How many
+  // are shown is kept on the app while the filters stay the same, so opening
+  // an entry and coming back keeps them; new filters start from the newest.
+  const groups = groupByDay(shown);
+  const filtersKey = JSON.stringify(filters);
+  if (app.recordsShown?.filtersKey !== filtersKey) app.recordsShown = { filtersKey, days: 0 };
+  let days = Math.min(groups.length, Math.max(app.recordsShown.days, batchEnd(groups)));
+  app.recordsShown.days = days;
+  const left = () => groups.slice(days).reduce((sum, group) => sum + group.records.length, 0);
+  const more = h('button', {
+    type: 'button', class: 'btn show-earlier',
+    onclick: () => {
+      const next = batchEnd(groups, days);
+      const added = groups.slice(days, next).map(daySection);
+      days = next;
+      app.recordsShown.days = days;
+      more.before(...added);
+      // Focus the first day just shown; the page stays where it was.
+      const heading = added[0].querySelector('h2');
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      syncMore();
+    },
+  });
+  function syncMore() {
+    more.hidden = days >= groups.length;
+    more.textContent = `Show earlier · ${left()} more`;
+  }
+  syncMore();
   const list = shown.length === 0
     ? h('p', { class: 'empty' }, all.length === 0 ? 'No entries yet.' : 'No entries match these filters.')
-    : groupByDay(shown).map(({ day, records }) => {
-      const heading = dayHeading(day);
-      return h('section', { class: 'record-day', 'aria-label': heading },
-        h('h2', { class: 'record-day-title' }, heading, h('span', {}, `${records.length} ${records.length === 1 ? 'entry' : 'entries'}`)),
-        h('ul', { class: 'record-list' }, records.map((record) => {
-          const row = recordRow(record, heading, siteLabel, pick);
-          rows.set(record.id, row.querySelector('button'));
-          return row;
-        })));
-    });
+    : [...groups.slice(0, days).map(daySection), more];
   if (split) showOpen(open, { justSaved: saved });
 
   return h('section', { class: split ? 'records split' : 'records' },
@@ -182,7 +226,7 @@ export async function renderRecords(app, { voided = null, selected = null, saved
     voided ? h('p', { class: 'voided-notice', role: 'status' }, icon('void'), ' ', voidedNotice(voided)) : null,
     isDevHost(location.hostname) ? devTools(app, all.length) : null,
     filterBar(app, filters),
-    h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${all.length} ${all.length === 1 ? 'entry' : 'entries'} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),
+    h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${plural(all.length, 'entry', 'entries')} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),
     // List first, then the open entry: the order screen readers and the
     // keyboard follow.
     split ? h('div', { class: 'records-split' }, h('div', { class: 'records-list' }, list), pane) : list);

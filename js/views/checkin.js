@@ -9,7 +9,7 @@ import { saveBathroomEvent } from '../save.js';
 import { toOffsetIso } from '../time.js';
 import { siteOptions } from '../settings.js';
 import { createFields, blockImplicitSubmit } from './fields.js';
-import { setShown } from './feedback.js';
+import { reduceMotion, setShown } from './feedback.js';
 import { confirmLeave } from './leave.js';
 import { showSavedCard } from './saved.js';
 import { createTray } from './tray.js';
@@ -143,7 +143,7 @@ export async function renderCheckin(app, { record = null, resume = null } = {}) 
     pristine = stableJson(draft);
     hideNeeds();
     sync();
-    window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    window.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
     dropUndo();
     const undo = h('button', {
       type: 'button',

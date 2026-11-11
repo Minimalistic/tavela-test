@@ -1,5 +1,5 @@
 import { h, icon } from '../dom.js';
-import { pressed } from './feedback.js';
+import { pressed, reduceMotion } from './feedback.js';
 import { toOffsetIso, toInputValue, fromInputValue, isFutureTime, minutesAgo } from '../time.js';
 
 const TIME_SHORTCUTS = [
@@ -255,7 +255,7 @@ export function createFields({ getDraft, update }) {
     sync();
     const group = form.querySelector('.group.needs');
     if (!group) return;
-    group.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    group.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
     group.querySelector('input, textarea')?.focus({ preventScroll: true });
   }
 

@@ -1,7 +1,7 @@
 // Motion and tap feedback, shared by the entry forms and every other button.
 // Purely visual: nothing here reads or changes the draft.
 const FADE_MS = 150;
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const leaving = new WeakMap();
 
 // Follow-up questions fade in and out in place (about 150ms, no movement).

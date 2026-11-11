@@ -1,12 +1,10 @@
 import { h, svgTree } from '../dom.js';
+import { plural } from '../words.js';
 import { timelineRows } from '../charts.js';
 import { rowDrawing, dayCenter, dayAt, shortDate } from '../chart-draw.js';
 import { dayDetail, dayFacts, NONE } from '../day-detail.js';
 import { localDate } from '../time.js';
 import { createDayTab } from './day-tab.js';
-
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-const MORE_LABEL = '+ 3 more rows';
 
 // "When": one timeline, a thin row per series on one date axis, drawn at the
 // screen's own width so it never scrolls sideways. Each row's name and total
@@ -14,16 +12,39 @@ const MORE_LABEL = '+ 3 more rows';
 // and the drag tab under the axis moves along it. For screen readers and
 // keyboards the rows are one slider over the days (arrow keys, Home, End),
 // whose value text is the day in words; the drawings are aria-hidden.
-export function timelineCard(counts, openDay) {
+// The words a linked number adds for screen readers; the chevron is for eyes.
+export const seeThem = (count) => h('span', { class: 'visually-hidden' }, count === 1 ? ', see it' : ', see them');
+export const chevron = () => h('span', { class: 'chev', 'aria-hidden': 'true' }, '›');
+
+// openMatch(match, id): a row total that counts entries opens them in
+// Records. The slider's children are read as one control, so those totals
+// are buttons in a layer laid over the rows, not inside them.
+// The timeline's width on paper, in CSS pixels; print CSS matches it. Fits
+// Letter and A4 at the browser's default margins.
+export const PRINT_WIDTH = 640;
+
+export function timelineCard(counts, openDay, openMatch) {
   const { days } = counts.window;
   const n = days.length;
-  const tracks = timelineRows(counts).map((row) => {
+  const rows = timelineRows(counts);
+  const moreLabel = `+ ${plural(rows.filter((row) => row.more).length, 'more row')}`;
+  const tracks = rows.map((row) => {
     const slot = h('div', { class: 'track-slot' });
+    const linked = Boolean(row.match) && row.count > 0;
+    const total = h('span', { class: `track-total${linked ? ' under-link' : ''}` }, row.total);
     const element = h('div', { class: `track area-${row.area}`, hidden: Boolean(row.more) },
-      h('p', { class: 'track-label' }, h('span', {}, row.label), h('span', { class: 'track-total' }, row.total)),
+      h('p', { class: 'track-label' }, h('span', {}, row.label), total),
       slot);
-    return { row, element, slot };
+    const id = `open-tl-${row.match}`;
+    const link = linked
+      ? h('button', {
+        type: 'button', id, class: `tl-link area-${row.area}`, hidden: Boolean(row.more),
+        onclick: () => openMatch(row.match, id),
+      }, h('span', { class: 'visually-hidden' }, `${row.label}: `), h('span', { class: 'tl-chip' }, h('u', {}, row.total), chevron()), seeThem(row.count))
+      : null;
+    return { row, element, slot, total, link };
   });
+  const links = h('div', { class: 'tl-links' }, tracks.map((track) => track.link));
   const band = h('div', { class: 'tl-band', 'aria-hidden': 'true' });
   const cursor = h('div', { class: 'tl-cursor', 'aria-hidden': 'true' });
   let index = n - 1;
@@ -49,11 +70,18 @@ export function timelineCard(counts, openDay) {
     onclick: () => {
       const open = more.getAttribute('aria-expanded') !== 'true';
       more.setAttribute('aria-expanded', String(open));
-      more.textContent = open ? 'Fewer rows' : MORE_LABEL;
-      for (const track of tracks) if (track.row.more) track.element.hidden = !open;
+      more.textContent = open ? 'Fewer rows' : moreLabel;
+      showMore(open);
       draw();
     },
-  }, MORE_LABEL);
+  }, moreLabel);
+  function showMore(open) {
+    for (const track of tracks) {
+      if (!track.row.more) continue;
+      track.element.hidden = !open;
+      if (track.link) track.link.hidden = !open;
+    }
+  }
   const detail = h('div', { class: 'day-detail' });
 
   // Dates under the rows, counted back from the last day so it's always named.
@@ -77,14 +105,29 @@ export function timelineCard(counts, openDay) {
     tab.show(index);
   }
 
+  // On paper the rows are drawn for the page (print CSS sets the same
+  // width), not for the screen the Print button was tapped on.
+  let printing = false;
   function draw() {
-    const width = frame.clientWidth;
+    const width = printing ? PRINT_WIDTH : frame.clientWidth;
     if (!width) return;
     for (const track of tracks) {
       if (!track.element.hidden) track.slot.replaceChildren(svgTree(rowDrawing(track.row, width)));
     }
     drawAxis(width);
+    placeLinks();
     placeCursor();
+  }
+
+  // Each link sits exactly over its row's total, which stays in place
+  // (unseen) so the label line keeps its shape.
+  function placeLinks() {
+    const box = frame.getBoundingClientRect();
+    for (const track of tracks) {
+      if (!track.link || track.element.hidden) continue;
+      const at = track.total.getBoundingClientRect();
+      track.link.style.setProperty('--y', `${at.top - box.top + at.height / 2}px`);
+    }
   }
 
   function select(next) {
@@ -111,9 +154,17 @@ export function timelineCard(counts, openDay) {
   select(index);
   // Draws once the card is on the page, and again whenever its width changes.
   new ResizeObserver(draw).observe(frame);
-  return h('section', { class: 'chart-card timeline-card', 'aria-labelledby': 'when-title' },
+  const card = h('section', { class: 'chart-card timeline-card', 'aria-labelledby': 'when-title' },
     h('div', { class: 'card-head' },
       h('h2', { id: 'when-title', class: 'chart-title' }, 'When'),
       h('p', { class: 'hint' }, 'Tap a day, or drag the tab.')),
-    frame, axis, tab.track, more, detail);
+    h('div', { class: 'timeline-wrap' }, frame, links), axis, tab.track, more, detail);
+  // Reports calls this around printing: every row, drawn for the page; then
+  // back to the screen as it was.
+  card.forPrint = (on) => {
+    printing = on;
+    showMore(on || more.getAttribute('aria-expanded') === 'true');
+    draw();
+  };
+  return card;
 }

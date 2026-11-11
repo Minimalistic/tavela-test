@@ -6,12 +6,11 @@
 import { BRISTOL, BOWEL_CARE_STATUS } from './bathroom.js';
 import { BEHAVIORS } from './handoff.js';
 import { INCOMPLETE, shortDate } from './chart-draw.js';
+import { plural } from './words.js';
 
 export { shortDate } from './chart-draw.js';
 
 export const CAVEAT = 'Observations may be incomplete.';
-
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const listDates = (days) => days.map(shortDate).join(', ');
 // Long lists stop being readable aloud; Records has the full set.
@@ -55,13 +54,31 @@ export function glanceNumbers(c) {
   const since = c.daysSinceLastBm;
   const average = (series) => (series.average === null ? '–' : series.average.toFixed(1));
   return [
-    { area: 'bathroom', value: String(c.urinations.total), label: c.urinations.total === 1 ? 'urination observed' : 'urinations observed' },
-    { area: 'bowel', value: String(c.bms.total), label: `${c.bms.total === 1 ? 'BM' : 'BMs'} observed, on ${plural(c.bmDays, 'day')}` },
+    { area: 'bathroom', value: String(c.urinations.total), label: c.urinations.total === 1 ? 'urination observed' : 'urinations observed', match: 'urination', count: c.urinations.total },
+    { area: 'bowel', value: String(c.bms.total), label: `${c.bms.total === 1 ? 'BM' : 'BMs'} observed, on ${plural(c.bmDays, 'day')}`, match: 'bm', count: c.bms.total },
     since === null ? { area: 'bowel', value: 'Not recorded', label: 'days since the last BM' }
       : since === 0 ? { area: 'bowel', value: 'Today', label: 'the last BM' }
         : { area: 'bowel', value: String(since), label: since === 1 ? 'day since the last BM' : 'days since the last BM' },
     { area: 'comfort', value: `${average(c.comfort.home_am)} · ${average(c.comfort.day_pm)}`, label: 'comfort, morning · afternoon (1–5)' },
   ];
+}
+
+// Every number on Reports that opens its entries in Records: a count of
+// entries, never an average or a count of days, and never a zero. place says
+// where it sits, so each can have its own control. The test checks each
+// count against filterEntries with its match.
+export function countLinks(c) {
+  const links = [];
+  const add = (place, match, count) => { if (match && count > 0) links.push({ place, match, count }); };
+  for (const tile of glanceNumbers(c)) add('glance', tile.match, tile.count);
+  for (const row of timelineRows(c)) add('timeline', row.match, row.count);
+  const { bristol, groups } = kindTotals(c);
+  for (const type of bristol.types) add('kinds', type.match, type.count);
+  for (const group of groups) {
+    add('kinds', group.noteMatch, group.noteCount);
+    for (const item of group.items) add('kinds', item.match, item.count);
+  }
+  return links;
 }
 
 const perDay = (days, byDay, fn = (v) => v) => days.map((day) => fn(byDay[day]));
@@ -77,16 +94,17 @@ export function kindTotals(c) {
   return {
     bristol: {
       total: c.bms.total,
-      types: BRISTOL.map(({ code, label, description }) => ({ code, label, description: description || null, count: c.bristol[code] })),
+      types: BRISTOL.map(({ code, label, description }) => ({ code, label, description: description || null, count: c.bristol[code], match: `bristol:${code}` })),
     },
     groups: [
       { key: 'episodes', title: 'Incontinence episodes', note: 'Wet and Soiled on the Check-In', ...list([
-        { label: 'Urine', area: 'bathroom', count: c.accidents.urine },
-        { label: 'Bowel', area: 'bowel', count: c.accidents.stool },
+        { label: 'Urine', area: 'bathroom', count: c.accidents.urine, match: 'urine_accident' },
+        { label: 'Bowel', area: 'bowel', count: c.accidents.stool, match: 'stool_accident' },
       ]) },
-      { key: 'behaviors', title: 'Behaviors', note: 'Each kind on its own', ...list(BEHAVIORS.map(({ code, label }) => ({ label, area: 'behavior', count: c.behaviors.total[code] }))) },
-      { key: 'flush', title: 'Flush care', note: plural(c.flushCare.total, 'time'), ...list(BOWEL_CARE_STATUS.map(({ code, label }) => ({ label, area: 'bowel', count: c.flushCare.byStatus[code] }))) },
-      { key: 'updates', title: 'Updates', note: `${c.coverage.incomplete} marked "some may be missing" or "unsure"`, items: [
+      { key: 'behaviors', title: 'Behaviors', note: 'Each kind on its own', ...list(BEHAVIORS.map(({ code, label }) => ({ label, area: 'behavior', count: c.behaviors.total[code], match: `behavior:${code}` }))) },
+      { key: 'flush', title: 'Flush care', note: plural(c.flushCare.total, 'time'), ...list(BOWEL_CARE_STATUS.map(({ code, label }) => ({ label, area: 'bowel', count: c.flushCare.byStatus[code], match: `flush:${code}` }))) },
+      { key: 'updates', title: 'Updates', note: `${c.coverage.incomplete} marked "some may be missing" or "unsure"`,
+        noteMatch: 'coverage_incomplete', noteCount: c.coverage.incomplete, items: [
         { label: 'Morning', area: 'handoff', count: recorded('home_am'), of: n },
         { label: 'Afternoon', area: 'handoff', count: recorded('day_pm'), of: n },
       ], max: n },
@@ -107,16 +125,16 @@ export function timelineRows(c) {
   const updateCount = updates.flat().filter((code) => code !== null).length;
   const flushDays = perDay(days, c.flushCare.byDay, (list) => list.length);
   return [
-    { key: 'urinations', label: 'Urinations', area: 'bathroom', kind: 'bars', values: perDay(days, c.urinations.byDay), total: String(c.urinations.total) },
-    { key: 'bms', label: 'BMs', area: 'bowel', kind: 'dots', values: perDay(days, c.bms.byDay), total: String(c.bms.total) },
-    { key: 'pain', label: 'Pain or "ow"', area: 'bathroom', kind: 'dots', values: perDay(days, c.pain.byDay), total: String(c.pain.total) },
-    { key: 'change', label: 'Urine looked different', area: 'bathroom', kind: 'dots', values: perDay(days, c.appearanceChanges.byDay), total: String(c.appearanceChanges.total) },
+    { key: 'urinations', label: 'Urinations', area: 'bathroom', kind: 'bars', values: perDay(days, c.urinations.byDay), total: String(c.urinations.total), match: 'urination', count: c.urinations.total },
+    { key: 'bms', label: 'BMs', area: 'bowel', kind: 'dots', values: perDay(days, c.bms.byDay), total: String(c.bms.total), match: 'bm', count: c.bms.total },
+    { key: 'pain', label: 'Pain or "ow"', area: 'bathroom', kind: 'dots', values: perDay(days, c.pain.byDay), total: String(c.pain.total), match: 'pain', count: c.pain.total },
+    { key: 'change', label: 'Urine looked different', area: 'bathroom', kind: 'dots', values: perDay(days, c.appearanceChanges.byDay), total: String(c.appearanceChanges.total), match: 'urine_different', count: c.appearanceChanges.total },
     { key: 'comfort_am', label: 'Comfort, morning', area: 'comfort', kind: 'line', values: perDay(days, c.comfort.home_am.byDay), total: average(c.comfort.home_am) },
     { key: 'comfort_pm', label: 'Comfort, afternoon', area: 'comfort', kind: 'line', dashed: true, values: perDay(days, c.comfort.day_pm.byDay), total: average(c.comfort.day_pm) },
     { key: 'behaviors', label: 'Behaviors', area: 'behavior', kind: 'dots', values: behaviorDays, total: `on ${plural(behaviorDays.filter(Boolean).length, 'day')}` },
     { key: 'updates', label: 'Updates, morning and afternoon', area: 'handoff', kind: 'cells', values: updates, total: String(updateCount) },
-    { key: 'odor', label: 'Strong smell', area: 'bathroom', kind: 'dots', more: true, values: perDay(days, c.odor.byDay), total: String(c.odor.total) },
-    { key: 'flush', label: 'Flush care', area: 'bowel', kind: 'dots', shape: 'diamond', more: true, values: flushDays, total: String(c.flushCare.total) },
+    { key: 'odor', label: 'Strong smell', area: 'bathroom', kind: 'dots', more: true, values: perDay(days, c.odor.byDay), total: String(c.odor.total), match: 'strong_smell', count: c.odor.total },
+    { key: 'flush', label: 'Flush care', area: 'bowel', kind: 'dots', shape: 'diamond', more: true, values: flushDays, total: String(c.flushCare.total), match: 'flush_care', count: c.flushCare.total },
     { key: 'bm_gap', label: 'Days since last BM', area: 'bowel', kind: 'bars', faint: true, more: true, values: perDay(days, c.bmGapByDay), total: 'all places' },
   ];
 }

@@ -1,4 +1,5 @@
 import { h, icon } from '../dom.js';
+import { siteLabel } from '../settings.js';
 import { entryArea, entryIcon } from '../areas.js';
 import { TEXT_LABELS } from '../handoff.js';
 import { saveVoid } from '../save.js';
@@ -12,7 +13,7 @@ export function renderRecord(app, { record, saved = false, embedded = false }) {
   const handoff = Boolean(record.summary_type);
   const rows = [
     ['When', formatDateTime(record.occurred_at)],
-    ['Where', app.settings.site_labels[record.site_code] ?? record.site_code],
+    ['Where', siteLabel(app.settings, record.site_code)],
     ...answerRows(record, name),
     ['Initials', record.initials],
     ['Entered', formatDateTime(record.created_at)],

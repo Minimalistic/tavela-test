@@ -10,7 +10,6 @@ export function openDb(name = 'handstead') {
     const request = indexedDB.open(name, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      // Handoffs store exists now so session 2 needs no version bump.
       db.createObjectStore('bathroom_events', { keyPath: 'id' });
       db.createObjectStore('handoffs', { keyPath: 'id' });
       db.createObjectStore('meta', { keyPath: 'key' });

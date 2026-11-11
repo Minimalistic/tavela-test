@@ -1,6 +1,7 @@
 // Rules shared by bathroom events and handoffs: which store a record lives in,
 // voiding, and the Records filter (docs/SPEC.md §9). Pure functions.
 import { localDate, isFutureTime } from './time.js';
+import { matchRule } from './matches.js';
 
 export const ENTRY_TYPES = [
   { code: 'bathroom', label: 'Bathroom Check-In' },
@@ -26,8 +27,12 @@ export function voidRecord(record, reason, nowIso) {
 export const byOccurredDesc = (a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at);
 
 // from/to are 'YYYY-MM-DD' local dates, both inclusive; null means open-ended.
-// site and type are codes; null means any.
-export function filterEntries(records, { from = null, to = null, site = null, type = null, showVoided = false } = {}) {
+// site and type are codes; null means any. match is a matches.js key: only
+// the entries a Reports count counted (a tapped total).
+export function filterEntries(records, { from = null, to = null, site = null, type = null, match = null, showVoided = false } = {}) {
+  const rule = match === null ? null : matchRule(match);
+  // An unknown key must not quietly widen the list to everything.
+  if (match !== null && !rule) throw new RangeError('Unknown match');
   return records
     .filter((record) => {
       if (record.voided_at && !showVoided) return false;
@@ -36,6 +41,7 @@ export function filterEntries(records, { from = null, to = null, site = null, ty
       if (to && day > to) return false;
       if (site && record.site_code !== site) return false;
       if (type && entryType(record) !== type) return false;
+      if (rule && !rule.test(record)) return false;
       return true;
     })
     .sort(byOccurredDesc);
@@ -81,13 +87,30 @@ export function groupByDay(records) {
   return groups;
 }
 
+// Records shows about this many entries at a time, in whole days.
+export const RECORDS_BATCH = 50;
+
+// Where the next batch of days ends (exclusive), starting at day index
+// `start` of groupByDay's list: whole days, at least one, until about `size`
+// entries. Records shows days [0, end) and offers "Show earlier" for the rest.
+export function batchEnd(groups, start = 0, size = RECORDS_BATCH) {
+  let end = start;
+  let entries = 0;
+  while (end < groups.length && (end === start || entries < size)) {
+    entries += groups[end].records.length;
+    end += 1;
+  }
+  return end;
+}
+
 // The folded Records filters, said in one line: "Sep 30 – Oct 30 · Day
 // program · Morning Update · with voided". Null when nothing is filtered.
-export function filterSummary({ from, to, site, type, showVoided }, { siteLabel, typeLabel, shortDate }) {
+export function filterSummary({ from, to, site, type, match = null, showVoided }, { siteLabel, typeLabel, shortDate }) {
   const dates = from && to ? `${shortDate(from)} – ${shortDate(to)}`
     : from ? `From ${shortDate(from)}`
     : to ? `Up to ${shortDate(to)}`
     : null;
-  const parts = [dates, site ? siteLabel(site) : null, type ? typeLabel(type) : null, showVoided ? 'with voided' : null].filter(Boolean);
+  const parts = [dates, site ? siteLabel(site) : null, type ? typeLabel(type) : null,
+    match ? matchRule(match)?.label : null, showVoided ? 'with voided' : null].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
 }

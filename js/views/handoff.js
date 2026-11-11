@@ -36,7 +36,7 @@ export async function renderHandoff(app, { type, record = null, pickDate = false
 
   const {
     radioGroup, checkGroup, textField, whenGroup, syncInputs,
-    revealNeeds, needsShown, hideNeeds,
+    revealNeeds, needsShown,
   } = createFields({
     getDraft: () => draft,
     update,

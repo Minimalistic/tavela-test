@@ -1,5 +1,6 @@
 import { h, icon } from '../dom.js';
-import { BackupError, passphraseProblem } from '../backup.js';
+import { plural } from '../words.js';
+import { BackupError, passphraseProblem, largeBackupNote } from '../backup.js';
 import { createBackup } from '../restore.js';
 import { recordBackupSaved } from '../backup-log.js';
 import { formatDateTime, toOffsetIso } from '../time.js';
@@ -45,7 +46,7 @@ function backupHistory(log) {
   const row = ({ at, filename, entries }) => h('li', {},
     h('span', { class: 'history-when' }, formatDateTime(at)),
     h('span', { class: 'history-file' }, filename),
-    h('span', { class: 'history-count' }, `${entries} ${entries === 1 ? 'entry' : 'entries'}`));
+    h('span', { class: 'history-count' }, plural(entries, 'entry', 'entries')));
   const list = h('ol', { class: 'backup-history' }, log.slice(0, SHOWN).map(row));
   const showAll = log.length > SHOWN
     ? h('button', {
@@ -126,9 +127,11 @@ export function renderCreateBackup(app) {
 
   // A separate tap for the share sheet: iPadOS only opens it straight from a
   // tap, and encrypting takes a few seconds.
+  const sizeNote = h('p', { class: 'hint', id: 'backup-size-note', hidden: true });
   const savePanel = h('div', { class: 'void-panel calm', hidden: true },
     h('h2', {}, 'Backup ready'),
     h('p', {}, 'Save it somewhere other than this device: a cloud drive, a computer, or a USB drive.'),
+    sizeNote,
     // Split button on touch devices (Jason, 10-20): the main part opens the
     // share sheet, the ↓ part downloads straight to Downloads.
     h('div', { class: 'ask-buttons start' },
@@ -159,6 +162,9 @@ export function renderCreateBackup(app) {
       const backup = await createBackup(app.store, first.value);
       file = new File([backup.text], backup.filename, { type: 'application/json' });
       entries = backup.entries;
+      const large = largeBackupNote(backup.text.length);
+      sizeNote.textContent = large ?? '';
+      sizeNote.hidden = !large;
       first.value = '';
       second.value = '';
       entry.hidden = true;
@@ -201,11 +207,14 @@ export function renderCreateBackup(app) {
       return;
     }
     await app.refreshFooter();
+    // The question's buttons go away, so focus moves to what replaced them.
+    const saved = h('h2', { tabindex: '-1' }, `✓ Backup saved · ${formatDateTime(now)}`);
     askPanel.replaceChildren(
-      h('h2', {}, `✓ Backup saved · ${formatDateTime(now)}`),
+      saved,
       h('p', {}, 'Keep the passphrase somewhere safe and separate from this device.'),
       h('div', { class: 'ask-buttons start' },
         h('button', { type: 'button', class: 'btn primary', onclick: () => app.show('backup') }, 'Done')));
+    saved.focus();
   }
 
   return h('section', { class: 'backup' },

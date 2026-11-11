@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
+import { reduceMotion } from './feedback.js';
 
 const SLIDE_MS = 260;
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Optional extras (a note, initials) live on the raised tray above Save
 // instead of in the form. Each opens a sheet that slides up with Done; the

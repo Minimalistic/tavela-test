@@ -1,4 +1,6 @@
 import { h, icon } from '../dom.js';
+import { siteLabel } from '../settings.js';
+import { plural } from '../words.js';
 import { buildCsvExport, exportCounts } from '../csv-export.js';
 import { recordExport, lastExportedThrough } from '../export-log.js';
 import { toOffsetIso } from '../time.js';
@@ -11,7 +13,6 @@ const dayWords = (day) => {
   const [y, m, d] = day.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 };
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export async function renderExport(app, { from, to, site = null } = {}) {
   const title = h('h1', { class: 'form-title' }, icon('download', 30), 'Export CSV');
@@ -27,7 +28,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
   const through = lastExportedThrough(log);
   const window = { from, to, site };
   const counts = exportCounts({ bathroomEvents, handoffs, ...window });
-  const placeWords = site ? `${app.settings.site_labels[site] ?? site} only` : 'all places';
+  const placeWords = site ? `${siteLabel(app.settings, site)} only` : 'all places';
   const back = h('button', { type: 'button', class: 'btn', onclick: () => app.show('reports') }, 'Back to Reports');
 
   const lead = [

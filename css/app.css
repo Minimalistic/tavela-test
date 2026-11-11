@@ -133,7 +133,6 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 .btn.primary { background: var(--green); color: #fff; }
 .btn.danger { border-color: var(--danger); color: var(--danger); }
 .btn.big { min-height: 64px; font-size: 1.25rem; padding: 14px 32px; }
-.btn.huge { min-height: 112px; font-size: min(1.5rem, max(24px, 1.4rem)); width: 100%; }
 .btn.secondary { border-width: 1px; font-weight: 500; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:focus-visible, .tile:focus-within, .record-row:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
@@ -267,7 +266,7 @@ legend, .legend-like { display: block; font-weight: 700; font-size: 1.2rem; marg
 /* Tiles drop to one column once the text is too big for two (7em); min(100%)
    keeps a column from ever being wider than the screen. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, max(150px, 7em)), 1fr)); gap: 10px; }
-.cols-4 .tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(160px, 7em)), 1fr)); }
+.cols-4 .tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(140px, 7em)), 1fr)); }
 .tile { position: relative; display: block; cursor: pointer; }
 .tile input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 /* Every option is a button with a fixed size and place. Pressing one sinks
@@ -482,14 +481,23 @@ dialog.saved-dialog::backdrop { background: transparent; }
 .record-day { margin: 18px 0 0; }
 .record-day-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 8px; font-size: 1.05rem; }
 .record-day-title span { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
+.show-earlier { margin: 20px 0 8px; }
+/* One disclosure look for every <details> fold: a ▸ that turns when open,
+   silent to screen readers (the summary's words say what it opens). Each
+   fold below keeps only what differs. */
+:is(.filters-fold, .storage-banner-more, .dev-tools, .in-words) summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none;
+}
+:is(.filters-fold, .storage-banner-more, .dev-tools, .in-words) summary::-webkit-details-marker { display: none; }
+:is(.filters-fold, .storage-banner-more, .dev-tools, .in-words) summary::before { content: '▸' / ''; transition: rotate 150ms; }
+:is(.filters-fold, .storage-banner-more, .dev-tools, .in-words)[open] summary::before { rotate: 90deg; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.filters-fold, .storage-banner-more, .dev-tools, .in-words) summary::before { transition: none; }
+}
 .filters-fold { margin: 0 0 8px; }
-.filters-fold summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; }
-.filters-fold summary::-webkit-details-marker { display: none; }
-.filters-fold summary::before { content: '▸' / ''; color: var(--ink-soft); transition: rotate 150ms; }
-.filters-fold[open] summary::before { rotate: 90deg; }
+.filters-fold summary::before, .in-words summary::before { color: var(--ink-soft); }
 .filters-label { font-weight: 700; }
 .filters-said { color: var(--ink-soft); overflow-wrap: anywhere; }
-@media (prefers-reduced-motion: reduce) { .filters-fold summary::before { transition: none; } }
 .record-row {
   width: 100%;
   display: grid;
@@ -515,8 +523,9 @@ dialog.saved-dialog::backdrop { background: transparent; }
 .record-day .record-what { grid-row: 1; grid-column: 2; display: flex; align-items: baseline; gap: 4px; }
 .record-day .record-what .icon { flex: none; align-self: center; }
 .record-day .record-where { grid-row: 1; grid-column: 3; align-self: baseline; text-align: right; }
-/* The narrowest phones: the place drops under what happened. */
-@media (max-width: 359px) {
+/* Phones: the place drops under what happened, so neither "Afternoon
+   Update" nor "Day program" wraps mid-phrase. */
+@media (max-width: 479px) {
   .record-day .record-row { grid-template-columns: 5.2em minmax(0, 1fr); }
   .record-day .record-where { grid-row: 2; grid-column: 2; text-align: left; }
 }
@@ -649,14 +658,10 @@ body:has(.storage-banner) .status .storage-risk { display: none; }
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px;
 }
 .storage-banner p { margin: 0; }
-.storage-banner-more summary { cursor: pointer; font-weight: 600; color: var(--green); min-height: 44px; display: flex; align-items: center; gap: 6px; }
-.storage-banner-more summary::-webkit-details-marker { display: none; }
-.storage-banner-more summary::before { content: '▸' / ''; transition: rotate 150ms; }
+.storage-banner-more summary { font-weight: 600; color: var(--green); gap: 6px; }
 .storage-banner-more[open] { flex-basis: 100%; }
-.storage-banner-more[open] summary::before { rotate: 90deg; }
 .storage-banner-more summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .storage-banner-more ol { margin: 4px 0 4px; padding-left: 1.5em; }
-@media (prefers-reduced-motion: reduce) { .storage-banner-more summary::before { transition: none; } }
 /* An unsaved entry kept on the device (views/drafts.js): calm, the bathroom
    area's colour, and above the tiles so it's the first thing seen. */
 .draft-card {
@@ -673,11 +678,7 @@ body:has(.storage-banner) .status .storage-risk { display: none; }
 /* Test-build tools (dev hosts only) */
 .dev-tools { border: 2px dashed var(--line); border-radius: var(--radius); padding: 0 16px; margin-bottom: 16px; }
 .dev-tools[open] { padding-bottom: 12px; }
-.dev-tools summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; font-weight: 600; color: var(--ink-soft); }
-.dev-tools summary::-webkit-details-marker { display: none; }
-.dev-tools summary::before { content: '▸' / ''; transition: rotate 150ms; }
-.dev-tools[open] summary::before { rotate: 90deg; }
-@media (prefers-reduced-motion: reduce) { .dev-tools summary::before { transition: none; } }
+.dev-tools summary { font-weight: 600; color: var(--ink-soft); }
 .report-empty { margin: 16px 0; font-size: 1.05rem; }
 .dev-tools .hint { margin-top: 6px; }
 
@@ -853,7 +854,7 @@ input[type=file] { font: inherit; min-height: var(--tap); }
    (CSP §3). Series are told apart by row name, marker shape or dash, never
    by colour alone. */
 /* Reports rethink: the window is said once, in a bar pinned under the demo
-   banner (--pin-top, set from the banner's height) while Reports scroll. */
+   banner (--pin-top, set by updateCovers from the banner's height) while Reports scroll. */
 .report-bar {
   position: sticky;
   top: var(--pin-top, 0);
@@ -942,7 +943,9 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   background: var(--area);
   vertical-align: 1px;
 }
-.track-total { font-weight: 500; font-variant-numeric: tabular-nums; }
+/* Today is picked on arrival and is the last column, so the cursor would run
+   through each row's right-aligned total; the total sits on a paper chip above it. */
+.track-total { position: relative; z-index: 1; padding-left: 4px; border-radius: 4px; background: var(--paper); font-weight: 500; font-variant-numeric: tabular-nums; }
 .track-drawing { display: block; overflow: visible; }
 .tl-mark { fill: var(--area); }
 .tl-mark.faint { fill-opacity: 0.45; }
@@ -970,16 +973,65 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 .kind-row { display: grid; grid-template-columns: minmax(6.5em, 9em) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 0.95rem; }
 .kind-row b { text-align: right; font-variant-numeric: tabular-nums; }
 .kind-row.zero { color: var(--ink-soft); }
+/* Totals that open their entries in Records (ACCEPTANCE "Tap a Reports
+   total"): at rest the number as it was, underlined, with a chevron; each is
+   at least 44px to tap. The whole tile, segment or row is the button. */
+.chev { margin-left: 3px; font-weight: 700; }
+:is(.glance-tile, .kind-row, .kind-seg, .tl-link, .kind-note).linked u, .tl-link u, .kind-note u { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+button.glance-tile, button.kind-row, button.kind-seg {
+  width: 100%;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.glance-tile { border-top: 4px solid var(--area); }
+.glance-tile .chev { color: var(--area); font-size: inherit; }
+button.kind-row, button.kind-seg { padding: 0; border: 0; border-radius: 6px; background: none; }
+button.kind-row { padding: 0 2px; font-size: 0.95rem; }
+.kind-row { padding: 0 2px; }
+.kind-rows { gap: 0; }
+.kind-row { min-height: 44px; }
+.kind-row .chev { color: var(--area); }
+button.glance-tile:focus-visible, button.kind-row:focus-visible, button.kind-seg:focus-visible, .tl-link:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.kind-note { min-height: 44px; padding: 0; font-weight: 500; font-size: 0.9rem; color: var(--ink-soft); text-align: left; }
+.timeline-wrap { position: relative; }
+.tl-links { position: absolute; inset: 0; pointer-events: none; }
+.tl-link {
+  position: absolute;
+  right: 0;
+  top: var(--y, 0);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tl-link[hidden] { display: none; }
+.tl-chip { padding-left: 4px; border-radius: 4px; background: var(--paper); }
+.track-total.under-link { visibility: hidden; }
 .kind-bar { height: 12px; border-radius: 6px; background: var(--chart-grid); overflow: hidden; }
 .kind-bar i { display: block; width: var(--w, 0); height: 100%; border-radius: 6px; background: var(--area); }
 /* "In words": every chart sentence, closed until asked for. */
-.in-words summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; }
-.in-words summary::-webkit-details-marker { display: none; }
-.in-words summary::before { content: '▸'; color: var(--ink-soft); transition: rotate 150ms; }
-.in-words[open] summary::before { rotate: 90deg; }
 .in-words summary .chart-title { margin: 0; }
 .in-words h3 { margin: 16px 0 4px; font-size: 1rem; }
-@media (prefers-reduced-motion: reduce) { .in-words summary::before { transition: none; } }
 /* The drag tab (views/day-tab.js) sits under the date axis. Its body stays
    inside the row at the first and last day; the notch on top points at the
    day's exact centre. Only the tab takes the finger; the page still scrolls. */
@@ -1092,4 +1144,44 @@ input[type=file] { font: inherit; min-height: var(--tap); }
 @media (prefers-reduced-motion: reduce) {
   .tile-text, .seg-text { transition: none; }
   .tapped { animation: tap-ring 300ms ease-out; }
+}
+
+/* Print (SPEC §12 "Printing"; ACCEPTANCE "Reports print"): the Reports on
+   screen, on paper or as a PDF. Only what the report says: no app chrome, no
+   controls, no picked day. Cards never split across pages; dark on white. */
+.print-head { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  :root { --paper: #fff; --cream: #fff; }
+  body { min-height: 0; background: #fff; color: #000; }
+  .topbar, .test-build, .demo-banner, .status, .storage-banner, .dev-tools,
+  .report-bar, .report-controls, .report-links, .print-ask,
+  .tl-band, .tl-cursor, .day-track, .tl-more, .tl-links, .day-detail,
+  .card-head .hint, .in-words { display: none !important; }
+  main { max-width: none; margin: 0; padding: 0; }
+  .reports > .form-title { display: none; }
+  .print-head { display: block; margin: 0 0 10px; }
+  .print-title { margin: 0 0 6px; font-size: 1.3rem; font-weight: 700; }
+  .print-facts { display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap: 2px 14px; margin: 0; font-size: 0.9rem; }
+  .print-facts dt { font-weight: 600; }
+  .print-facts dd { margin: 0; }
+  .report-caveat { margin: 0 0 8px; padding: 6px 10px; color: #000; }
+  .report-glance { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .glance-tile { padding: 6px 10px; }
+  .chart-card, .glance-tile { box-shadow: none; break-inside: avoid; }
+  .chart-card { padding-top: 10px; padding-bottom: 10px; }
+  .track { padding: 3px 0 2px; }
+  /* "What kind" two across, as on a wide screen, with tap-sized rows
+     back to their reading size, so the card fits one page. */
+  .kinds-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; align-items: start; }
+  .kinds-card > .card-head { grid-column: 1 / -1; margin-bottom: -6px; }
+  .kinds-card .kind + .kind { margin-top: 0; }
+  .kind-row { min-height: 26px; }
+  .kind { break-inside: avoid; }
+  .track-total.under-link { visibility: visible; }
+  .chev { display: none; }
+  .reports u, .kind-note { text-decoration: none; }
+  /* Matches PRINT_WIDTH in views/timeline.js, which draws the rows for it. */
+  .timeline-wrap, .tl-axis { width: 640px; max-width: 100%; }
+  .timeline { cursor: auto; }
 }

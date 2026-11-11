@@ -3,10 +3,11 @@
 // commit into the published copy (0.6.0+d66fabc), so every published build
 // gets a fresh cache with no hand-kept counter (DECISIONS "Versions").
 //
-// Milestone 1 uses the browser's default update lifecycle: a new version waits
-// until every Handstead window is closed. The gated, backup-first update flow
-// (SPEC §14) replaces this in session 5.
-const VERSION = '0.7.0+5a62ede';
+// Real builds use the browser's default update lifecycle: a new version waits
+// until every Handstead window is closed. Test builds on dev hosts take over at
+// once on the page's 'skip-waiting' message (DECISIONS "Test builds update
+// themselves"). The gated, backup-first update flow (SPEC §14) is still to come.
+const VERSION = '0.8.0+9cc25c2';
 const CACHE = `handstead-${VERSION}`;
 
 const SHELL = [
@@ -25,7 +26,9 @@ const SHELL = [
   './js/save.js',
   './js/handoff.js',
   './js/entries.js',
-  './js/dev-seed.js',
+  './js/matches.js',
+  './js/hosts.js',
+  './js/updates.js',
   './js/demo-data.js',
   './js/demo.js',
   './js/counts.js',
@@ -43,6 +46,7 @@ const SHELL = [
   './js/export-log.js',
   './js/storage-risk.js',
   './js/text-size.js',
+  './js/words.js',
   './js/layout.js',
   './js/nav.js',
   './js/views/home.js',

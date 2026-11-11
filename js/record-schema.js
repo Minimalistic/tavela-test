@@ -9,7 +9,7 @@ import { DATASET_ID_PATTERN } from './dataset.js';
 import { CURRENT_SCHEMA_VERSION } from './migrations.js';
 
 // Caps applied after decryption, so a small file of dense JSON can't flood
-// the device's storage either.
+// the device's storage either. Never lowered, like MAX_FILE_BYTES.
 export const MAX_RECORDS = 100_000;
 
 export class InvalidRecord extends Error {

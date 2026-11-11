@@ -10,6 +10,11 @@ export const DEFAULT_SETTINGS = {
   },
 };
 
+// A code with no label (a later setting removed it) shows as the code itself.
+export function siteLabel(settings, code) {
+  return settings.site_labels[code] ?? code;
+}
+
 export function siteOptions(settings) {
   return Object.entries(settings.site_labels).map(([code, label]) => ({ code, label }));
 }

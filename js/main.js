@@ -21,7 +21,8 @@ import { ensureDatasetId } from './dataset.js';
 import { migrateLocalData } from './migrations.js';
 import { BackupError, APP_VERSION } from './backup.js';
 import { formatDateTime } from './time.js';
-import { isDevHost } from './dev-seed.js';
+import { isDevHost } from './hosts.js';
+import { startUpdates, reloadForUpdate } from './updates.js';
 
 // Bumped by every app.show; see the press wait there.
 let showTicket = 0;
@@ -66,6 +67,8 @@ const app = {
     bigText: document.documentElement.classList.contains('big-text'),
   }),
   reportWindow: null,
+  // { id, y }: the Reports total tapped and where the page was, for Back.
+  reportReturn: null,
   refreshFooter: () => renderFooter(),
   // The dev-host "Clear all data". Clearing empties meta too, so the real
   // store gets back what boot gives it (schema version, a new Tracker ID);
@@ -134,8 +137,11 @@ const app = {
     }
   },
   // Returns 'shown', 'stayed' (the leave check kept a form open) or nothing
-  // (overtaken, switching, or reloading for an update).
-  async show(name, params = {}, { fromHistory = false } = {}) {
+  // (overtaken, switching, or reloading for an update). keepPlace is a
+  // control's id: a filter redrawing its own screen keeps the scroll and puts
+  // focus back on that control instead of the heading, so a keyboard or
+  // VoiceOver user picking From then To isn't sent to the top between them.
+  async show(name, params = {}, { fromHistory = false, keepPlace = null } = {}) {
     if (app.switching) return;
     // A second tap during the press wait replaces the first: only the
     // newest request goes on to draw a screen.
@@ -145,7 +151,7 @@ const app = {
     if (app.leaveGuard && !(await app.leaveGuard())) return 'stayed';
     app.leaveGuard = null;
     // A test build that updated while a form was open switches over now.
-    if (reloadForUpdate()) return;
+    if (reloadForUpdate(app)) return;
     // Demo data must never go into a backup or be restored over (SPEC §16).
     if (app.demo && BACKUP_VIEWS.has(name)) name = 'home';
     // An unsaved entry kept on the device is never replaced without a choice.
@@ -173,6 +179,13 @@ const app = {
     app.current = { name, params };
     trackCovers();
     document.getElementById('home-link').hidden = name === 'home';
+    // A control the redraw hid or removed (a closed panel, Clear filters)
+    // can't take focus; then it's the usual top and heading.
+    document.getElementById(keepPlace ?? '')?.focus({ preventScroll: true });
+    if (keepPlace && document.activeElement?.id === keepPlace) {
+      if (!fromHistory) recordStep(name, params);
+      return 'shown';
+    }
     window.scrollTo(0, 0);
     // Focus the screen's heading so VoiceOver says which screen this is; an
     // unnamed <main> is read as just "main". preventScroll: focusing would
@@ -249,7 +262,14 @@ async function onHistoryStep(event) {
   const from = nav.depth;
   const params = await paramsFrom(state.params);
   const [view, shownParams] = params ? [state.view, params] : ['records', {}];
-  const result = await app.show(view, shownParams, { fromHistory: true });
+  // Back to Reports after a tapped total: the same spot, focus on that total.
+  const back = view === 'reports' ? app.reportReturn : null;
+  const result = await app.show(view, shownParams, { fromHistory: true, keepPlace: back?.id ?? null });
+  if (back && result === 'shown') {
+    // Two frames: the timeline draws its rows once it's laid out, and until
+    // then the page is too short to scroll that far.
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, back.y)));
+  }
   if (result === 'stayed') {
     // The form stays open, so put history back where the form is.
     nav.ignorePops++;
@@ -272,8 +292,11 @@ const coverObserver = new ResizeObserver(() => updateCovers());
 
 function updateCovers() {
   const height = (el) => (el && !el.hidden ? el.offsetHeight : 0);
-  const top = height(document.getElementById('demo-banner')) + height(document.querySelector('.report-bar'));
+  const banner = height(document.getElementById('demo-banner'));
+  const top = banner + height(document.querySelector('.report-bar'));
   const root = document.documentElement.style;
+  // Reports' window line pins just under the demo banner.
+  root.setProperty('--pin-top', `${banner}px`);
   root.setProperty('--cover-top', `${top}px`);
   const bar = document.querySelector('.save-bar');
   if (bar) bar.classList.toggle('save-bar-inline', bar.offsetHeight > window.innerHeight / 4);
@@ -403,63 +426,7 @@ async function boot() {
   await renderFooter();
   await app.show('home');
 
-  showUpdatedNote();
-  if ('serviceWorker' in navigator) {
-    const hadVersion = Boolean(navigator.serviceWorker.controller);
-    navigator.serviceWorker.register('./sw.js')
-      .then((registration) => { if (isDevHost(location.hostname)) applyTestUpdates(registration, hadVersion); })
-      .catch((err) => console.error('Handstead: offline support failed to install:', err?.name ?? 'unknown error'));
-  }
-}
-
-// Test builds (localhost, the tailnet, tavela-test.marsh.city) take a new version as soon as it's
-// downloaded, so a phone doesn't need every Handstead window closed to see a
-// change. Real builds keep the browser's default wait until the gated update
-// flow (SPEC §14, session 5), which never activates a version silently.
-let updateReady = false;
-const UPDATED_KEY = 'handstead-updated';
-
-function applyTestUpdates(registration, hadVersion) {
-  const promote = (worker) => worker.postMessage('skip-waiting');
-  if (registration.waiting && hadVersion) promote(registration.waiting);
-  registration.addEventListener('updatefound', () => {
-    const worker = registration.installing;
-    worker?.addEventListener('statechange', () => {
-      if (worker.state === 'installed' && navigator.serviceWorker.controller) promote(worker);
-    });
-  });
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    // The very first install also claims the page; that isn't an update.
-    if (!hadVersion) return;
-    updateReady = true;
-    reloadForUpdate();
-  });
-  // A phone resuming a tab doesn't load anything, so look for a new version.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') registration.update().catch(() => {});
-  });
-}
-
-// Reloads into the new version unless that would lose something: a form
-// still open (its leave guard is set) or a dialog up, such as the Saved card.
-// Returns true when it reloads.
-function reloadForUpdate() {
-  if (!updateReady || app.leaveGuard || document.querySelector('dialog[open]')) return false;
-  try { sessionStorage.setItem(UPDATED_KEY, '1'); } catch { /* the note is a nicety */ }
-  location.reload();
-  return true;
-}
-
-function showUpdatedNote() {
-  let updated = false;
-  try {
-    updated = sessionStorage.getItem(UPDATED_KEY) === '1';
-    sessionStorage.removeItem(UPDATED_KEY);
-  } catch { /* no note without storage */ }
-  if (!updated) return;
-  const note = h('p', { class: 'toast update-note', role: 'status' }, `Updated to Handstead ${APP_VERSION}.`);
-  document.body.append(note);
-  setTimeout(() => note.remove(), 4000);
+  startUpdates(app);
 }
 
 boot();

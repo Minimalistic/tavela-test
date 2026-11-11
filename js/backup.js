@@ -17,11 +17,21 @@ export const ENVELOPE_VERSION = 1;
 // The app's version (DECISIONS "Versions"): semver, bumped when something
 // ships to testers, never per edit. Shown in the footer and stamped on
 // backups; sw.js and package.json match it (tests check both).
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.8.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;
+// Never lowered: a backup a released version made must still fit (PROMISES.md).
+// Heavy use makes about 4 MB a year.
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+// Past this, Create Backup says so, years before the limit, so a release can
+// raise it in time. Raising never breaks an old file.
+export const LARGE_BACKUP_BYTES = MAX_FILE_BYTES / 2;
+
+export function largeBackupNote(bytes) {
+  if (bytes <= LARGE_BACKUP_BYTES) return null;
+  return `This backup is getting large (${Math.round(bytes / 1024 / 1024)} MB). It still opens fine. Let whoever set up Handstead know, so a future version can make room.`;
+}
 
 const MESSAGES = {
   not_a_backup: 'This file isn\'t a Handstead backup. Nothing was changed.',
