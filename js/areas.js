@@ -16,7 +16,7 @@ export function entryArea(record) {
 
 // Bathroom events show what happened; event codes double as icon names.
 export function entryIcon(record) {
-  return record.summary_type ? HANDOFF_ICONS[record.summary_type] : record.event_code ?? 'checkin';
+  return record.summary_type ? HANDOFF_ICONS[record.summary_type] ?? 'handoffs' : record.event_code ?? 'checkin';
 }
 
 export const handoffIcon = (type) => HANDOFF_ICONS[type];

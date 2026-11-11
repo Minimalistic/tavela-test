@@ -129,7 +129,7 @@ export function renderCreateBackup(app) {
   // tap, and encrypting takes a few seconds.
   const sizeNote = h('p', { class: 'hint', id: 'backup-size-note', hidden: true });
   const savePanel = h('div', { class: 'void-panel calm', hidden: true },
-    h('h2', {}, 'Backup ready'),
+    h('h2', { tabindex: '-1' }, 'Backup ready'),
     h('p', {}, 'Save it somewhere other than this device: a cloud drive, a computer, or a USB drive.'),
     sizeNote,
     // Split button on touch devices (Jason, 10-20): the main part opens the
@@ -145,7 +145,7 @@ export function renderCreateBackup(app) {
           : null)));
 
   const askPanel = h('div', { class: 'void-panel calm', hidden: true },
-    h('h2', {}, 'Did you save it somewhere other than this device?'),
+    h('h2', { tabindex: '-1' }, 'Did you save it somewhere other than this device?'),
     h('div', { class: 'ask-buttons start' },
       h('button', { type: 'button', class: 'btn primary', onclick: confirmSaved }, 'Yes, it\'s saved elsewhere'),
       h('button', { type: 'button', class: 'btn', onclick: () => share() }, 'No, save it again')));
@@ -170,6 +170,8 @@ export function renderCreateBackup(app) {
       entry.hidden = true;
       savePanel.hidden = false;
       note('');
+      // Create Backup went with the form, so focus moves to what replaced it.
+      savePanel.querySelector('h2').focus();
     } catch (err) {
       console.error('Handstead: backup failed:', err?.name ?? 'unknown error');
       fail(err instanceof BackupError
@@ -186,6 +188,7 @@ export function renderCreateBackup(app) {
         savePanel.hidden = true;
         askPanel.hidden = false;
         note('');
+        askPanel.querySelector('h2').focus();
       } else {
         note('Not saved yet. Tap Save Backup File to try again.');
       }

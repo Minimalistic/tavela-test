@@ -1,12 +1,12 @@
 import { h, ask } from './dom.js';
-import { openDb, createStore, deleteDb } from './db.js';
+import { openDb, openDbAsIs, createStore, createReadOnlyStore, deleteDb, UPGRADE_BLOCKED } from './db.js';
 import { storageRiskLine, storageRiskBanner } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
 import { entryFor, planNavigation, windowParams } from './nav.js';
 import { WIDE_QUERY, splitRecords } from './layout.js';
 import { DEMO_DB, isDemoActive, startDemo, leaveDemo, refreshStaleDemo, clearDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
-import { renderHome } from './views/home.js';
+import { renderHome, renderReadOnlyHome } from './views/home.js';
 import { renderCheckin } from './views/checkin.js';
 import { renderHandoff } from './views/handoff.js';
 import { renderRecords } from './views/records.js';
@@ -28,14 +28,14 @@ import { startUpdates, reloadForUpdate } from './updates.js';
 let showTicket = 0;
 
 const VIEWS = {
-  home: renderHome,
+  home: (app) => (app.readOnly ? renderReadOnlyHome(app) : renderHome(app)),
   checkin: renderCheckin,
   handoff: renderHandoff,
   records: renderRecords,
   reports: renderReports,
   // On a wide screen an entry opens on the right of Records instead of on
   // its own screen (ACCEPTANCE "Records side by side").
-  record: (app, params) => (app.isSplit() ? renderRecords(app, { selected: params.record, saved: params.saved }) : renderRecord(app, params)),
+  record: (app, params) => (app.isSplit() ? renderRecords(app, { selected: params.record, saved: params.saved, notVoided: params.notVoided }) : renderRecord(app, params)),
   backup: renderBackup,
   'backup-create': renderCreateBackup,
   restore: renderRestore,
@@ -44,6 +44,8 @@ const VIEWS = {
 
 const BACKUP_VIEWS = new Set(['backup', 'backup-create', 'restore']);
 const FORM_VIEWS = new Set(['checkin', 'handoff']);
+// All that read-only mode can show (DECISIONS "Read-only").
+const READ_ONLY_VIEWS = new Set(['home', 'records', 'record']);
 
 // Navigation is in-memory, not URL-based: no record ids or data ever land in
 // the address bar (SPEC §3). Each screen is also a browser history step
@@ -54,6 +56,9 @@ const app = {
   store: null,
   realStore: null,
   demo: false,
+  // True when the data on this device is newer than this version: the store
+  // refuses every write and only Home and Records are drawn.
+  readOnly: false,
   settings: DEFAULT_SETTINGS,
   leaveGuard: null,
   recordFilters: null,
@@ -76,6 +81,7 @@ const app = {
   // store gets back what boot gives it (schema version, a new Tracker ID);
   // without them the next backup fails its own check.
   async clearData() {
+    if (app.readOnly) return;
     if (app.demo) {
       await clearDemo(app.store);
     } else {
@@ -89,7 +95,7 @@ const app = {
   // so no form can open holding the store that is about to be swapped out.
   switching: false,
   async startDemo(days, view = 'records') {
-    if (app.switching) return;
+    if (app.switching || app.readOnly) return;
     app.switching = true;
     try {
       const demoStore = app.demo ? app.store : await openDemoStore();
@@ -107,7 +113,7 @@ const app = {
     await app.show(view);
   },
   async leaveDemo() {
-    if (app.switching) return;
+    if (app.switching || app.readOnly) return;
     const guard = app.leaveGuard;
     if (guard && !(await guard())) return;
     const choice = await ask({
@@ -158,6 +164,8 @@ const app = {
     if (reloadForUpdate(app)) return;
     // Demo data must never go into a backup or be restored over (SPEC §16).
     if (app.demo && BACKUP_VIEWS.has(name)) name = 'home';
+    // Back, a kept draft or a stale button can ask for any screen.
+    if (app.readOnly && !READ_ONLY_VIEWS.has(name)) [name, params] = ['home', {}];
     // An unsaved entry kept on the device is never replaced without a choice.
     if (FORM_VIEWS.has(name) && !params.resume) {
       const gate = await checkBeforeForm(app, () => ticket === showTicket);
@@ -253,7 +261,6 @@ async function relayoutRecords() {
     await app.show('record', { record: app.recordPicked });
     return;
   }
-  // Records' one-off notice (an entry voided) isn't said again.
   await app.show(current.name, current.name === 'records' ? {} : current.params, { fromHistory: true });
 }
 
@@ -358,6 +365,10 @@ async function renderFooter() {
     document.getElementById('status-line').textContent = 'Demo data · kept apart from the real entries on this device';
     return;
   }
+  if (app.readOnly) {
+    document.getElementById('status-line').textContent = 'Stored on this device · Read only until the app is updated';
+    return;
+  }
   const lastBackup = await app.store.getMeta('last_backup_at');
   document.getElementById('status-line').textContent =
     `Stored on this device · Last backup: ${lastBackup ? formatDateTime(lastBackup) : 'Never'}`;
@@ -398,40 +409,74 @@ async function boot() {
   document.getElementById('leave-demo').addEventListener('click', () => app.leaveDemo().catch((err) => {
     console.error('Handstead: leaving demo failed:', err?.name ?? 'unknown error');
   }));
+  // The data can be newer than this code two ways: the database itself is a
+  // newer version (open fails with VersionError), or its recorded schema is.
+  let newer = false;
   try {
     app.realStore = createStore(await openDb(), () => openDb());
     app.store = app.realStore;
   } catch (err) {
-    console.error('Handstead: could not open storage:', err?.name ?? 'unknown error');
-    document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
-      'Handstead could not open its storage on this device. Nothing can be saved right now. Close the app fully and open it again.'));
-    return;
-  }
-  try {
-    await migrateLocalData(app.realStore);
-    await ensureDatasetId(app.realStore);
-  } catch (err) {
-    // Nothing was changed (one transaction). Stop rather than write over data
-    // this version doesn't understand.
-    console.error('Handstead: could not prepare stored data:', err?.name ?? 'unknown error');
-    document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
-      err instanceof BackupError && err.code === 'newer'
-        ? 'The data on this device was saved by a newer version of Handstead. Nothing was changed. Update the app to keep using it.'
-        : 'Handstead could not prepare its data on this device. Nothing was changed. Close the app fully and open it again.'));
-    return;
-  }
-  try {
-    if (await isDemoActive(app.realStore)) {
-      const demoStore = await openDemoStore();
-      // A demo database from before a schema change is made again, not shown.
-      await refreshStaleDemo({ realStore: app.realStore, demoStore });
-      useDemo(demoStore);
+    if (err?.name === 'VersionError') {
+      newer = true;
+    } else {
+      console.error('Handstead: could not open storage:', err?.name ?? 'unknown error');
+      document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
+        err?.name === UPGRADE_BLOCKED
+          ? 'Handstead is open somewhere else on this device, in a window or tab still using an older version. Nothing was changed. Close every other Handstead window or tab, then open it again.'
+          : 'Handstead could not open its storage on this device. Nothing can be saved right now. Close the app fully and open it again.'));
+      return;
     }
-  } catch (err) {
-    // Fall back to real data, with no banner, which is the truth.
-    console.error('Handstead: could not open demo storage:', err?.name ?? 'unknown error');
   }
-  await requestPersistence();
+  if (!newer) {
+    try {
+      await migrateLocalData(app.realStore);
+      await ensureDatasetId(app.realStore);
+    } catch (err) {
+      // Nothing was changed (one transaction). Stop rather than write over data
+      // this version doesn't understand.
+      if (err instanceof BackupError && err.code === 'newer') {
+        app.realStore.close();
+        newer = true;
+      } else {
+        console.error('Handstead: could not prepare stored data:', err?.name ?? 'unknown error');
+        document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
+          'Handstead could not prepare its data on this device. Nothing was changed. Close the app fully and open it again.'));
+        return;
+      }
+    }
+  }
+  if (newer) {
+    console.warn('Handstead: stored data is newer than this version; opening read-only');
+    // Read-only: the entries can be read in Records; nothing is written, not
+    // even the persistence grant or a demo flag (DECISIONS "Read-only").
+    try {
+      const db = await openDbAsIs();
+      // A window on the newer version can still upgrade it under us.
+      db.onversionchange = () => db.close();
+      app.realStore = createReadOnlyStore(db);
+      app.store = app.realStore;
+      app.readOnly = true;
+      document.getElementById('newer-banner').hidden = false;
+    } catch (err) {
+      console.error('Handstead: could not open newer storage to read:', err?.name ?? 'unknown error');
+      document.getElementById('view').replaceChildren(h('p', { class: 'save-status failed' },
+        'The data on this device was saved by a newer version of Handstead. Nothing was changed. Update the app to keep using it.'));
+      return;
+    }
+  } else {
+    try {
+      if (await isDemoActive(app.realStore)) {
+        const demoStore = await openDemoStore();
+        // A demo database from before a schema change is made again, not shown.
+        await refreshStaleDemo({ realStore: app.realStore, demoStore });
+        useDemo(demoStore);
+      }
+    } catch (err) {
+      // Fall back to real data, with no banner, which is the truth.
+      console.error('Handstead: could not open demo storage:', err?.name ?? 'unknown error');
+    }
+    await requestPersistence();
+  }
   await renderFooter();
   await app.show('home');
 

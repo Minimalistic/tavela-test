@@ -59,7 +59,7 @@ export function glanceNumbers(c) {
     since === null ? { area: 'bowel', value: 'Not recorded', label: 'days since the last BM' }
       : since === 0 ? { area: 'bowel', value: 'Today', label: 'the last BM' }
         : { area: 'bowel', value: String(since), label: since === 1 ? 'day since the last BM' : 'days since the last BM' },
-    { area: 'comfort', value: `${average(c.comfort.home_am)} · ${average(c.comfort.day_pm)}`, label: 'comfort, morning · afternoon (1–5)' },
+    { area: 'comfort', value: `${average(c.comfort.home_am)} · ${average(c.comfort.day_pm)}`, label: 'average comfort, morning · afternoon (1–5)' },
   ];
 }
 

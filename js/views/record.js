@@ -3,14 +3,20 @@ import { siteLabel } from '../settings.js';
 import { entryArea, entryIcon } from '../areas.js';
 import { TEXT_LABELS } from '../handoff.js';
 import { saveVoid } from '../save.js';
+import { showVoidedCard } from './voided.js';
 import { formatDateTime, formatTime } from '../time.js';
 import { entryTitle, answerRows } from '../record-text.js';
+import { understands } from '../record-schema.js';
 
 // embedded: drawn on the right of Records on a wide screen (views/records.js),
 // where Records keeps the page's h1 and its list is already beside it.
-export function renderRecord(app, { record, saved = false, embedded = false }) {
+export function renderRecord(app, { record, saved = false, notVoided = false, embedded = false }) {
   const name = app.settings.display_name;
   const handoff = Boolean(record.summary_type);
+  // Read-only mode (the data is newer than this version): nothing can be
+  // changed, and an entry this version only partly knows says so.
+  const locked = Boolean(record.voided_at) || Boolean(app.readOnly);
+  const partly = Boolean(app.readOnly) && !understands(record);
   const rows = [
     ['When', formatDateTime(record.occurred_at)],
     ['Where', siteLabel(app.settings, record.site_code)],
@@ -31,31 +37,33 @@ export function renderRecord(app, { record, saved = false, embedded = false }) {
     reasonInput,
     h('div', { class: 'ask-buttons' },
       h('button', { type: 'button', class: 'btn danger', onclick: confirmVoid }, icon('void'), ' Void entry'),
-      h('button', { type: 'button', class: 'btn primary', onclick: () => { voidPanel.hidden = true; actions.hidden = false; } }, 'Cancel')));
+      // Cancel is hidden with the panel, so focus goes back to Void.
+      h('button', { type: 'button', class: 'btn primary', onclick: () => { voidPanel.hidden = true; actions.hidden = false; voidButton.focus(); } }, 'Cancel')));
 
   async function confirmVoid(event) {
     event.target.disabled = true;
     const result = await saveVoid(app.store, record, reasonInput.value);
     event.target.disabled = false;
     if (result.ok) {
-      app.show('records', { voided: record });
+      showVoidedCard(app, result.record);
       return;
     }
     status.className = 'save-status failed';
     status.textContent = result.message;
   }
 
+  const voidButton = locked ? null : h('button', {
+    type: 'button', class: 'btn danger',
+    onclick: () => { actions.hidden = true; voidPanel.hidden = false; reasonInput.focus(); },
+  }, icon('void'), ' Void');
   const actions = h('div', { class: 'detail-actions' },
-    record.voided_at ? null : h('button', { type: 'button', class: 'btn primary', onclick: () => app.show(editView, { record }) }, icon('edit'), ' Edit'),
-    record.voided_at ? null : h('button', {
-      type: 'button', class: 'btn danger',
-      onclick: () => { actions.hidden = true; voidPanel.hidden = false; reasonInput.focus(); },
-    }, icon('void'), ' Void'),
+    locked ? null : h('button', { type: 'button', class: 'btn primary', onclick: () => app.show(editView, { record }) }, icon('edit'), ' Edit'),
+    voidButton,
     embedded ? null : h('button', { type: 'button', class: 'btn', onclick: () => app.show('records') }, 'Back to records'));
 
   // One Update a day: a second one for the same date is refused, so this is
   // the way to catch up a missed day. The date starts blank, for picking.
-  const another = handoff && !record.voided_at
+  const another = handoff && !locked
     ? h('button', {
       type: 'button', class: 'btn small record-another',
       onclick: () => app.show('handoff', { type: record.summary_type, pickDate: true }),
@@ -64,15 +72,17 @@ export function renderRecord(app, { record, saved = false, embedded = false }) {
 
   return h('section', { class: 'record-detail' },
     saved ? h('p', { class: 'saved-inline', role: 'status' }, `✓ Changes saved ${app.demo ? 'to the demo data' : 'on this device'} · ${formatTime(record.updated_at)}`) : null,
+    notVoided ? h('p', { class: 'saved-inline', role: 'status' }, '✓ Not voided. The entry is back as it was.') : null,
     h(embedded ? 'h2' : 'h1', { class: `form-title area-${entryArea(record)}` }, icon(entryIcon(record), 30), handoff ? entryTitle(record) : 'Bathroom Check\u2011In'),
     record.voided_at
       ? h('p', { class: 'voided-banner' },
         h('strong', {}, 'Voided '), formatDateTime(record.voided_at),
         record.void_reason ? ` · Reason: ${record.void_reason}` : '')
       : null,
+    partly ? h('p', { class: 'voided-banner' }, "This entry has details this version of Handstead can't show.") : null,
     handoff && record.positive_note
       ? h('div', { class: 'positive-box' },
-        h('p', { class: 'positive-title' }, icon('positive'), ' ', TEXT_LABELS[record.summary_type].positive_note),
+        h('p', { class: 'positive-title' }, icon('positive'), ' ', TEXT_LABELS[record.summary_type]?.positive_note ?? 'Positive'),
         h('p', {}, record.positive_note))
       : null,
     h('dl', {}, rows.flatMap(([term, value]) => [h('dt', {}, term), h('dd', {}, value)])),

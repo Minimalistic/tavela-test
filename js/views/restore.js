@@ -90,11 +90,14 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
     }
     note('');
     const now = await readLocal(app.store);
+    // The Restore button is gone, so focus moves to what replaced it.
+    const restored = h('h2', { tabindex: '-1' }, '✓ Restored');
     result.replaceChildren(
-      h('h2', {}, '✓ Restored'),
+      restored,
       h('p', {}, `This device now has ${entriesAndNotes(now.bathroom_events.length + now.handoffs.length, now.annotations.length)}.`),
       h('div', { class: 'ask-buttons start' },
         h('button', { type: 'button', class: 'btn primary', onclick: () => app.show('records') }, 'Go to Records')));
+    restored.focus();
   }
 
   function preview(plan) {

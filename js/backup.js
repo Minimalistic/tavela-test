@@ -17,7 +17,7 @@ export const ENVELOPE_VERSION = 1;
 // The app's version (DECISIONS "Versions"): semver, bumped when something
 // ships to testers, never per edit. Shown in the footer and stamped on
 // backups; sw.js and package.json match it (tests check both).
-export const APP_VERSION = '0.9.0';
+export const APP_VERSION = '0.10.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;

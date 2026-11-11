@@ -7,10 +7,13 @@ import {
 import { QUESTIONS, SUMMARY_TYPES, TEXT_LABELS, BEHAVIORS } from './handoff.js';
 import { formatDateTime } from './time.js';
 
+// A kind this version doesn't know can only come from a newer one (read-only
+// mode): saves and restores refuse it. It gets a plain name, never its code.
+export const NEWER_ENTRY = 'Entry from a newer version';
+
 export function entryTitle(record) {
-  return record.summary_type
-    ? labelFor(SUMMARY_TYPES, record.summary_type)
-    : labelFor(EVENTS, record.event_code);
+  const [options, code] = record.summary_type ? [SUMMARY_TYPES, record.summary_type] : [EVENTS, record.event_code];
+  return options.some((option) => option.code === code) ? labelFor(options, code) : NEWER_ENTRY;
 }
 
 // For list previews and the detail view.
@@ -41,6 +44,9 @@ function bathroomRows(record, name) {
 }
 
 function handoffRows(record, name) {
+  // An Update type from a newer version has no questions here; its note
+  // still shows.
+  if (!QUESTIONS[record.summary_type]) return [['Note', record.handoff_note]];
   return [
     ...QUESTIONS[record.summary_type].map((question) => [
       question.legend(name),
@@ -53,10 +59,4 @@ function handoffRows(record, name) {
 // [label, value] pairs for a record's answers; a falsy value means "not asked".
 export function answerRows(record, name) {
   return record.summary_type ? handoffRows(record, name) : bathroomRows(record, name);
-}
-
-// Records says this after a void, since the entry leaves the list (review
-// backlog: voiding used to land on Records with no word of what happened).
-export function voidedNotice(record) {
-  return `Voided: ${entryTitle(record)}, ${formatDateTime(record.occurred_at)}. It's kept on this device; find it with Show voided under Filters.`;
 }

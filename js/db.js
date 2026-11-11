@@ -2,7 +2,8 @@
 // strict durability, which is what lets the UI say "Saved".
 
 // 2 added the annotations store (schema version 2, notes pinned to dates).
-const DB_VERSION = 2;
+export const DB_VERSION = 2;
+export const UPGRADE_BLOCKED = 'UpgradeBlockedError';
 const STORES = [['bathroom_events', 'id'], ['handoffs', 'id'], ['annotations', 'id'], ['meta', 'key']];
 
 // Named after the app (DECISIONS "Storage names"). Renaming it leaves every
@@ -21,8 +22,65 @@ export function openDb(name = 'handstead') {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Database upgrade blocked by another open Handstead window'));
+    // Named so the start screen can say which window to close (main.js).
+    request.onblocked = () => reject(Object.assign(new Error('Database upgrade blocked by another open Handstead window'), { name: UPGRADE_BLOCKED }));
   });
+}
+
+// Read-only mode (DECISIONS "Read-only"): the data on this device is newer
+// than this code. Opens the database at whatever version it has: no version
+// is asked for, so it is never upgraded or downgraded, and if there is none,
+// none is made.
+export const NEWER_LAYOUT = 'NewerLayoutError';
+
+export function openDbAsIs(name = 'handstead') {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name);
+    // Only fires when the database doesn't exist; aborting leaves it that way.
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onsuccess = () => {
+      const db = request.result;
+      // A newer layout that moved the entries can't be read as "no entries":
+      // better to say so and show nothing.
+      const missing = ['bathroom_events', 'handoffs', 'meta'].filter((store) => ![...db.objectStoreNames].includes(store));
+      if (missing.length === 0) return resolve(db);
+      db.close();
+      reject(Object.assign(new Error('Newer database has no ' + missing.join(', ')), { name: NEWER_LAYOUT }));
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export const READ_ONLY = 'ReadOnlyError';
+
+// The store's reads, and nothing else: every write is refused here, so a
+// screen that forgot to hide a button still can't change newer data. Only
+// read-only transactions are ever opened. No reopen after a dropped
+// connection; the next launch opens it again.
+export function createReadOnlyStore(db) {
+  const refuse = () => Promise.reject(Object.assign(new Error('Storage is read-only: its data is newer than this version'), { name: READ_ONLY }));
+  // async, so a connection another window closed rejects like any other
+  // failed read instead of throwing past the caller's catch.
+  const read = async (storeName, query) => {
+    const tx = db.transaction(storeName, 'readonly');
+    return finish(tx, query(tx.objectStore(storeName)));
+  };
+  return {
+    readOnly: true,
+    get: (storeName, key) => read(storeName, (objects) => objects.get(key)),
+    getAll: (storeName) => read(storeName, (objects) => objects.getAll()),
+    async getMeta(key) {
+      return (await this.get('meta', key))?.value ?? null;
+    },
+    put: refuse,
+    setMeta: refuse,
+    clearAll: refuse,
+    deleteAnnotation: refuse,
+    writeAll: refuse,
+    close() {
+      db.close();
+    },
+  };
 }
 
 // Resolves once the database is gone. If another window still has it open,

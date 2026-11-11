@@ -30,6 +30,15 @@ const lastLoggedText = (record) => {
   return `Last logged ${formatTime(record.occurred_at)}${ago ? ` · ${ago}` : ''}`;
 };
 
+// Read-only mode (the data is newer than this version): Records is all there
+// is. The notice itself is the banner above every screen (index.html).
+export function renderReadOnlyHome(app) {
+  return h('section', { class: 'home' },
+    h('h1', { class: 'visually-hidden' }, 'Home'),
+    h('div', { class: 'home-secondary' },
+      h('button', { type: 'button', class: 'btn secondary', onclick: () => app.show('records') }, icon('records'), ' Records')));
+}
+
 export async function renderHome(app) {
   const [events, handoffs] = await Promise.all([app.store.getAll('bathroom_events'), app.store.getAll('handoffs')]);
   const last = lastLogged(events);

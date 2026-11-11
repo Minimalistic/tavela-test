@@ -63,9 +63,10 @@ export function notesCard(app, { notes, pickedDay, changed, noTimeline = false }
     notes.length
       ? h('ul', { class: 'notes-list' }, notes.map(row))
       : h('p', { class: 'hint notes-none' }, 'No notes in these dates. A note marks a day or a range on the timeline, like the start of a new medication.'),
-    noTimeline && notes.length
-      ? h('p', { class: 'hint notes-why' }, 'These dates have no entries, so there is no timeline to mark. The notes are listed here.')
-      : null,
+    // Element.append() writes a null as the word "null", unlike h().
+    ...(noTimeline && notes.length
+      ? [h('p', { class: 'hint notes-why' }, 'These dates have no entries, so there is no timeline to mark. The notes are listed here.')]
+      : []),
     status);
   return card;
 }

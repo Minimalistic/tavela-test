@@ -24,6 +24,13 @@ export function voidRecord(record, reason, nowIso) {
   return { ...record, voided_at: nowIso, void_reason: trimmed === '' ? null : trimmed };
 }
 
+// The one way back from a void: Undo on the card shown right after it
+// (DECISIONS "Void card"). Voiding left everything else alone, so clearing
+// the two fields is the entry exactly as it was.
+export function unvoidRecord(record) {
+  return { ...record, voided_at: null, void_reason: null };
+}
+
 export const byOccurredDesc = (a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at);
 
 // from/to are 'YYYY-MM-DD' local dates, both inclusive; null means open-ended.

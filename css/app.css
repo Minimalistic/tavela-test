@@ -80,7 +80,7 @@ main {
    the big sizes about 1.25x the body text (1.125rem) instead of 1.5-1.8x. */
 h1 { font-size: min(1.75rem, max(28px, 1.4rem)); color: var(--green); margin: 8px 0 20px; }
 /* Focused by script on every screen change (main.js), never by Tab. */
-h1[tabindex="-1"] { outline: none; }
+h1[tabindex="-1"], .void-panel h2[tabindex="-1"], .restore-result h2[tabindex="-1"] { outline: none; }
 h2 { font-size: 1.3rem; margin: 0 0 8px; }
 
 /* Header */
@@ -474,6 +474,13 @@ dialog.saved-dialog::backdrop { background: transparent; }
 .saved-title { margin: 12px 0 4px; font-size: min(1.5rem, max(24px, 1.4rem)); outline: none; }
 .saved-what { margin: 0 0 16px; font-weight: 600; }
 .saved-where { margin: -10px 0 16px; color: var(--ink-soft); font-size: 0.95rem; }
+/* Void card (voided.js): the Saved card's shape, a dashed mark like the
+   voided banner, and buttons that sit dim through the hold. */
+.voided-mark { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; border: 2px dashed var(--ink-soft); color: var(--ink-soft); }
+.voided-card .saved-where { margin-top: -10px; }
+.voided-card .save-status:empty { display: none; }
+.voided-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
 
 /* Records */
 .record-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -744,8 +751,6 @@ body:has(.storage-banner) .status .storage-risk { display: none; }
 .voided-tag, .voided-banner strong { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; font-weight: 700; }
 .voided-tag { border: 1px solid var(--ink-soft); border-radius: 6px; padding: 1px 6px; margin-right: 8px; }
 .voided-banner { border: 2px dashed var(--ink-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 20px; }
-.voided-notice { border: 2px dashed var(--ink-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; font-weight: 600; }
-.voided-notice .icon { vertical-align: -4px; }
 .record-positive .icon, .record-note .icon { margin-right: 2px; }
 
 .saved-inline { font-weight: 700; color: var(--green); margin: 0 0 8px; }
@@ -844,6 +849,10 @@ input[type=file] { font: inherit; min-height: var(--tap); }
   border-bottom: 2px solid var(--ink);
 }
 .demo-banner[hidden] { display: none; }
+/* Read-only mode: the data is newer than this version (main.js). */
+.newer-banner { padding: 10px 20px; background: var(--paper); color: var(--ink); border-bottom: 2px solid var(--ink); }
+.newer-banner[hidden] { display: none; }
+.newer-banner p { margin: 0; }
 .demo-banner p { margin: 0; }
 .demo-banner-sub { font-size: 0.95rem; }
 .demo-banner .btn { border-color: var(--ink); color: var(--ink); }
@@ -1211,7 +1220,7 @@ button.glance-tile:focus-visible, button.kind-row:focus-visible, button.kind-seg
   @page { margin: 12mm; }
   :root { --paper: #fff; --cream: #fff; }
   body { min-height: 0; background: #fff; color: #000; }
-  .topbar, .test-build, .demo-banner, .status, .storage-banner, .dev-tools,
+  .topbar, .test-build, .demo-banner, .newer-banner, .status, .storage-banner, .dev-tools,
   .report-bar, .report-controls, .report-links, .print-ask,
   .tl-band, .tl-cursor, .day-track, .tl-more, .tl-links, .day-detail,
   .card-head .hint, .in-words { display: none !important; }

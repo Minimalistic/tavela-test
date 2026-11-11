@@ -140,6 +140,19 @@ export function sanitizeHandoff(raw) {
   return record;
 }
 
+// Read-only mode: does this version know every field and value of a stored
+// entry? Anything it can't vouch for (a key it has never heard of, a code it
+// would refuse) counts as no, so the entry can say it has more to show.
+export function understands(record) {
+  try {
+    const known = record?.summary_type ? sanitizeHandoff(record) : sanitizeBathroomEvent(record);
+    return Object.keys(record).every((key) => Object.hasOwn(known, key));
+  } catch (err) {
+    if (err instanceof InvalidRecord) return false;
+    throw err;
+  }
+}
+
 // A note pinned to a date or range (annotations.js). Checked as strictly as
 // an entry, and more so on one point: a key this version doesn't know refuses
 // the note, since nothing older than these fields can exist.

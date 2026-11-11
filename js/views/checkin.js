@@ -132,10 +132,18 @@ export async function renderCheckin(app, { record = null, resume = null } = {}) 
 
   let undoToast = null;
   let undoTimer = null;
+  // The toast takes focus with it when it goes (Undo tapped, or its ten
+  // seconds up), so focus moves to Start over if it's showing, else the title.
   function dropUndo() {
     clearTimeout(undoTimer);
+    const hadFocus = undoToast?.contains(document.activeElement);
     undoToast?.remove();
     undoToast = null;
+    return hadFocus;
+  }
+  function focusAfterUndo() {
+    const target = startOverButton.hidden ? document.querySelector('#view h1') : startOverButton;
+    target?.focus({ preventScroll: true });
   }
   function startOver() {
     const before = { draft, pristine };
@@ -151,12 +159,13 @@ export async function renderCheckin(app, { record = null, resume = null } = {}) 
         ({ draft, pristine } = before);
         dropUndo();
         sync();
+        focusAfterUndo();
       },
     }, 'Undo');
     undoToast = h('div', { class: 'toast', role: 'status' }, 'Cleared', undo);
     form.append(undoToast);
     undo.focus({ preventScroll: true });
-    undoTimer = setTimeout(dropUndo, 10000);
+    undoTimer = setTimeout(() => { if (dropUndo()) focusAfterUndo(); }, 10000);
   }
 
   async function onSave(event) {

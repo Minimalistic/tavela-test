@@ -1,12 +1,13 @@
 import * as bathroom from './bathroom.js';
 import * as handoff from './handoff.js';
-import { storeFor, voidRecord, updateOnDate } from './entries.js';
+import { storeFor, voidRecord, unvoidRecord, updateOnDate } from './entries.js';
 import { toOffsetIso, formatDay } from './time.js';
 import { CONNECTION_LOST } from './db.js';
 import { sanitizeBathroomEvent, sanitizeHandoff, InvalidRecord, TEXT_LIMITS } from './record-schema.js';
 
 export const NOT_SAVED = 'Not saved. Your entry is still here. Try Save again.';
 export const NOT_VOIDED = 'Not saved. The entry was not voided. Try again.';
+export const NOT_UNDONE = 'Not undone. The entry is still voided.';
 // The store already reopened once and failed again, so Save won't work until
 // the app restarts. Closing loses the form, hence "note it down".
 export const STORAGE_LOST = 'Not saved. Handstead lost its connection to storage on this device. ' +
@@ -87,4 +88,25 @@ export async function saveHandoff(store, draft, now = new Date()) {
 
 export function saveVoid(store, record, reason, now = new Date()) {
   return write(store, voidRecord(record, reason, toOffsetIso(now)), NOT_VOIDED);
+}
+
+// Undo on the void card. `voided` is the record saveVoid just wrote; the
+// stored copy must still be that void (same voided_at and updated_at), so
+// this can never un-void anything else, or an entry that changed since. An
+// Update takes its date back; if another one stands there now, it's refused.
+export async function undoVoid(store, voided) {
+  const storeName = storeFor(voided);
+  let stored;
+  let taken = null;
+  try {
+    stored = await store.get(storeName, voided.id);
+    if (storeName === 'handoffs') taken = updateOnDate(await store.getAll('handoffs'), voided);
+  } catch (err) {
+    return failed(storeName, err, NOT_UNDONE);
+  }
+  if (!voided.voided_at || !stored || stored.voided_at !== voided.voided_at || stored.updated_at !== voided.updated_at) {
+    return { ok: false, message: NOT_UNDONE };
+  }
+  if (taken) return { ok: false, taken, message: `${NOT_UNDONE} ${alreadyLogged(taken)}` };
+  return write(store, unvoidRecord(stored), NOT_UNDONE);
 }

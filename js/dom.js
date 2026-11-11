@@ -27,7 +27,10 @@ export function icon(name, size = 20) {
     viewBox: '0 0 24 24', width: size, height: size, class: `icon icon-${name}`, 'aria-hidden': 'true', focusable: 'false',
     fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
   })) svg.setAttribute(key, value);
-  for (const [tag, attrs] of ICONS[name]) {
+  // A name this version doesn't have (an entry kind from a newer version, in
+  // read-only mode) draws the Records glyph: one unknown row must not take
+  // the whole list down with it.
+  for (const [tag, attrs] of ICONS[name] ?? ICONS.records) {
     const shape = document.createElementNS(NS, tag);
     for (const [key, value] of Object.entries(attrs)) shape.setAttribute(key, value);
     svg.append(shape);

@@ -1,5 +1,5 @@
 import { h, ask, icon } from '../dom.js';
-import { entryTitle, voidedNotice } from '../record-text.js';
+import { entryTitle } from '../record-text.js';
 import { ENTRY_TYPES, filterEntries, groupByDay, filterSummary, batchEnd } from '../entries.js';
 import { matchRule } from '../matches.js';
 import { siteLabel, siteOptions } from '../settings.js';
@@ -138,7 +138,7 @@ function recordRow(record, day, siteLabel, open) {
 // the open entry sit side by side, like iPad Mail (ACCEPTANCE "Records side
 // by side"): picking a row redraws only the right side, with no history step,
 // so the list keeps its scroll and Back still leaves Records.
-export async function renderRecords(app, { voided = null, selected = null, saved = false } = {}) {
+export async function renderRecords(app, { voided = false, selected = null, saved = false, notVoided = false } = {}) {
   const all = [
     ...await app.store.getAll('bathroom_events'),
     ...await app.store.getAll('handoffs'),
@@ -155,10 +155,10 @@ export async function renderRecords(app, { voided = null, selected = null, saved
 
   const pane = split ? h('div', { class: 'records-pane', role: 'region', 'aria-label': 'Open entry' }) : null;
   const rows = new Map();
-  function showOpen(record, { focus = false, justSaved = false } = {}) {
+  function showOpen(record, { focus = false, justSaved = false, justUnvoided = false } = {}) {
     for (const [id, button] of rows) button.setAttribute('aria-current', String(id === record?.id));
     pane.replaceChildren(record
-      ? renderRecord(app, { record, saved: justSaved, embedded: true })
+      ? renderRecord(app, { record, saved: justSaved, notVoided: justUnvoided, embedded: true })
       : h('p', { class: 'empty' }, 'Pick an entry to see it here.'));
     if (focus) {
       const heading = pane.querySelector('h2');
@@ -218,13 +218,11 @@ export async function renderRecords(app, { voided = null, selected = null, saved
   const list = shown.length === 0
     ? h('p', { class: 'empty' }, all.length === 0 ? 'No entries yet.' : 'No entries match these filters.')
     : [...groups.slice(0, days).map(daySection), more];
-  if (split) showOpen(open, { justSaved: saved });
+  if (split) showOpen(open, { justSaved: saved, justUnvoided: notVoided });
 
   return h('section', { class: split ? 'records split' : 'records' },
     h('h1', { class: 'form-title' }, icon('records', 30), 'Records'),
-    // Transient: history steps drop it, so going back doesn't repeat it.
-    voided ? h('p', { class: 'voided-notice', role: 'status' }, icon('void'), ' ', voidedNotice(voided)) : null,
-    isDevHost(location.hostname) ? devTools(app, all.length) : null,
+    isDevHost(location.hostname) && !app.readOnly ? devTools(app, all.length) : null,
     filterBar(app, filters),
     h('p', { class: 'hint', role: 'status' }, `Showing ${shown.length} of ${plural(all.length, 'entry', 'entries')} ${app.demo ? 'in the demo data' : 'on this device'}, newest first.`),
     // List first, then the open entry: the order screen readers and the
