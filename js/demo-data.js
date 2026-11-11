@@ -5,7 +5,8 @@
 import { newBathroomDraft, toRecord as bathroomRecord } from './bathroom.js';
 import { newHandoffDraft, toRecord as handoffRecord } from './handoff.js';
 import { voidRecord } from './entries.js';
-import { toOffsetIso } from './time.js';
+import { toOffsetIso, localDate } from './time.js';
+import { toAnnotation } from './annotations.js';
 
 export const DEMO_DAYS = [30, 90, 180];
 export const DEMO_SEED = 20261020;
@@ -211,7 +212,36 @@ export function generateDemoData({ days, seed = DEMO_SEED, now = new Date() }) {
   }
 
   const byTime = (a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at);
-  return { bathroom_events: bathroom.sort(byTime), handoffs: handoffs.sort(byTime) };
+  return { bathroom_events: bathroom.sort(byTime), handoffs: handoffs.sort(byTime), annotations: demoAnnotations(days, seed, now) };
+}
+
+const DEMO_NOTES = [
+  ['Demo: started new medication', 0],
+  ['Demo: staying with family', 3],
+  ['Demo: nurse visit, culture taken', 0],
+  ['Demo: new staff member started', 0],
+  ['Demo: day program closed', 1],
+];
+
+// A few reviewer notes, one or two per 30 days, so the timeline shows its
+// markers. Their own random stream, so the entries above are the same ones
+// the generator made before notes existed.
+function demoAnnotations(days, seed, now) {
+  const rng = makeRng(seed ^ 0x6e6f7465);
+  const dayAt = (index) => localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1 - index), 12));
+  const notes = [];
+  for (let start = 0; start < days; start += 15) {
+    const end = Math.min(start + 14, days - 1);
+    if (end - start < 9) break;
+    const [text, extraDays] = DEMO_NOTES[notes.length % DEMO_NOTES.length];
+    const first = rng.int(start + 2, end - 2 - extraDays);
+    const written = toOffsetIso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1 - first), 16, rng.int(0, 59)));
+    notes.push(toAnnotation({
+      id: rng.uuid(), text, date_from: dayAt(first), date_to: extraDays ? dayAt(first + extraDays) : null,
+      initials: rng.chance(0.6) ? rng.pick(STAFF) : null, created_at: null,
+    }, written));
+  }
+  return notes;
 }
 
 function urineAnswers(rng, inPain, hour) {

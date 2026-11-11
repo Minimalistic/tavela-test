@@ -9,6 +9,8 @@ import { timelineCard, seeThem, chevron } from './timeline.js';
 import { reportTitle } from '../csv-export.js';
 import { recordExport } from '../export-log.js';
 import { formatDateTime, toOffsetIso } from '../time.js';
+import { annotationsInWindow } from '../annotations.js';
+import { notesCard } from './notes.js';
 
 const PRESETS = [7, 30, 90];
 // A custom range past two years would draw tens of thousands of SVG nodes.
@@ -185,16 +187,18 @@ function kindsCard(counts, open) {
       onclick: () => open(group.noteMatch, `open-kind-${group.noteMatch}`),
     }, h('u', {}, group.note), chevron(), seeThem(group.noteCount))
     : h('span', {}, group.note));
-  return h('section', { class: 'chart-card kinds-card', 'aria-labelledby': 'kinds-title' },
+  return h('div', { class: 'chart-card kinds-card' },
     h('div', { class: 'card-head' },
-      h('h2', { id: 'kinds-title', class: 'chart-title' }, 'What kind'),
+      h('h2', { class: 'chart-title' }, 'What kind'),
       h('p', { class: 'hint' }, 'Totals for these dates')),
     h('div', { class: 'kind area-bowel' },
       h('h3', {}, 'Bristol type', h('span', {}, plural(bristol.total, 'BM', 'BMs'))),
       h('ol', { class: 'kind-bristol' }, bristol.types.map(segment)),
       h('p', { class: 'kind-ends', 'aria-hidden': 'true' }, h('span', {}, 'Hard'), h('span', {}, 'Liquid'))),
     groups.map((group) => h('div', { class: 'kind' },
-      h('h3', {}, group.title, note(group)),
+      // The note sits beside the heading, not in it: a linked one holds
+      // hidden words, which iPhone VoiceOver can read as a stop of their own.
+      h('div', { class: 'kind-head' }, h('h3', {}, group.title), note(group)),
       h('ul', { class: 'kind-rows' }, group.items.map((item) => row(item, group.max))))));
 }
 
@@ -215,6 +219,10 @@ export async function renderReports(app) {
     ...await app.store.getAll('handoffs'),
   ];
   const state = { ...DEFAULT_WINDOW, ...app.reportWindow };
+  // Set when a note changes: Reports redraws on the day that was picked.
+  // Taken on every draw, so it never outlives the redraw it was set for.
+  const startDay = app.reportPick ?? null;
+  app.reportPick = null;
   if (!app.navFromHistory) app.reportReturn = null;
   printHooks = null;
   const range = state.preset ? presetWindow(state.preset) : { from: state.from, to: state.to };
@@ -240,11 +248,18 @@ export async function renderReports(app) {
       h('p', { class: 'save-status failed', role: 'status' }, problem));
   }
 
+  // Notes pinned to dates have no place, so the place filter leaves them be.
+  const notes = annotationsInWindow(await app.store.getAll('annotations'), range.from, range.to);
   const n = counts.entries.length;
   if (n === 0) {
-    // No logging shortcut here: entries start from Home (Jason, 10-31).
+    // No logging shortcut here: entries start from Home (Jason, 10-31). Notes
+    // still show: one can be read, added or removed with no entries to mark.
     return h('section', { class: 'reports' }, header,
-      h('p', { class: 'report-empty', role: 'status' }, emptyReportText(records.length)));
+      h('p', { class: 'report-empty', role: 'status' }, emptyReportText(records.length)),
+      notesCard(app, {
+        notes, pickedDay: () => range.to, noTimeline: true,
+        changed: (focusId) => app.show('reports', {}, { keepPlace: focusId }),
+      }));
   }
   const open = opener(app, state, range);
   // The Tracker ID is the device's, demo mode or not, as on CSV exports.
@@ -254,7 +269,22 @@ export async function renderReports(app) {
   const timeline = timelineCard(counts, (day) => {
     app.recordFilters = { from: day, to: day, site: state.site, type: null, match: null, showVoided: false };
     app.show('records');
-  }, open);
+  }, open, { notes, startDay });
+  // A saved or removed note redraws Reports where it was: the same picked
+  // day, focus on the control named, and that control at the same height on
+  // the screen (the picked day's boxes above it can gain or lose a note).
+  const noteChanged = async (focusId) => {
+    const top = () => document.getElementById(focusId)?.getBoundingClientRect().top;
+    const was = top();
+    app.reportPick = timeline.pickedDay();
+    await app.show('reports', {}, { keepPlace: focusId });
+    // Two frames: the timeline draws its rows once it's laid out, and until
+    // then the page is too short to scroll that far.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const now = top();
+      if (was !== undefined && now !== undefined) window.scrollBy(0, now - was);
+    }));
+  };
   const screenTitle = document.title;
   // Only while this drawing of Reports is the one on the page.
   printHooks = {
@@ -284,6 +314,7 @@ export async function renderReports(app) {
       }, icon('download'), ' Export CSV')),
     ask,
     timeline,
+    notesCard(app, { notes, pickedDay: () => timeline.pickedDay(), changed: noteChanged }),
     kindsCard(counts, open),
     inWords(counts));
 }

@@ -7,6 +7,7 @@ import * as handoff from './handoff.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { DATASET_ID_PATTERN } from './dataset.js';
 import { CURRENT_SCHEMA_VERSION } from './migrations.js';
+import * as annotations from './annotations.js';
 
 // Caps applied after decryption, so a small file of dense JSON can't flood
 // the device's storage either. Never lowered, like MAX_FILE_BYTES.
@@ -49,6 +50,7 @@ const codeList = (codes) => (value, field) => {
 export const TEXT_LIMITS = {
   initials: 8, void_reason: 200, urine_change_note: 200, notes: 500,
   handoff_note: 500, positive_note: 500, behavior_other_note: 200,
+  annotation_text: annotations.ANNOTATION_TEXT_LIMIT,
 };
 
 // Same limits as the form inputs.
@@ -138,6 +140,30 @@ export function sanitizeHandoff(raw) {
   return record;
 }
 
+// A note pinned to a date or range (annotations.js). Checked as strictly as
+// an entry, and more so on one point: a key this version doesn't know refuses
+// the note, since nothing older than these fields can exist.
+const day = (value, field) => (annotations.isDay(value) ? value : fail(field));
+const ANNOTATION_FIELDS = {
+  id,
+  text: (value, field) =>
+    (typeof value === 'string' && value.trim() !== '' && value.length <= TEXT_LIMITS.annotation_text ? value : fail(field)),
+  date_from: day,
+  date_to: nullable(day),
+  initials: text(TEXT_LIMITS.initials),
+  created_at: iso,
+  updated_at: iso,
+};
+
+export function sanitizeAnnotation(raw) {
+  if (!isPlainObject(raw)) fail('record');
+  for (const key of Object.keys(raw)) if (!Object.hasOwn(ANNOTATION_FIELDS, key)) fail('unknown field');
+  const record = copyFields(raw, ANNOTATION_FIELDS);
+  const errors = Object.keys(annotations.validate(record));
+  if (errors.length > 0) fail(errors[0]);
+  return record;
+}
+
 function sanitizeList(list, sanitize, field) {
   if (!Array.isArray(list) || list.length > MAX_RECORDS) fail(field);
   const records = list.map((record, index) => {
@@ -163,6 +189,7 @@ export function sanitizeBackupData(data) {
     dataset_id: data.dataset_id,
     bathroom_events: sanitizeList(data.bathroom_events, sanitizeBathroomEvent, 'bathroom_events'),
     handoffs: sanitizeList(data.handoffs, sanitizeHandoff, 'handoffs'),
+    annotations: sanitizeList(data.annotations, sanitizeAnnotation, 'annotations'),
   };
 }
 

@@ -4,7 +4,7 @@ import { storageRiskLine, storageRiskBanner } from './storage-risk.js';
 import { tapFeedback, pressSettled } from './views/feedback.js';
 import { entryFor, planNavigation, windowParams } from './nav.js';
 import { WIDE_QUERY, splitRecords } from './layout.js';
-import { DEMO_DB, isDemoActive, startDemo, leaveDemo } from './demo.js';
+import { DEMO_DB, isDemoActive, startDemo, leaveDemo, refreshStaleDemo, clearDemo } from './demo.js';
 import { DEFAULT_SETTINGS } from './settings.js';
 import { renderHome } from './views/home.js';
 import { renderCheckin } from './views/checkin.js';
@@ -69,13 +69,17 @@ const app = {
   reportWindow: null,
   // { id, y }: the Reports total tapped and where the page was, for Back.
   reportReturn: null,
+  // The day picked on Reports' timeline, kept across a note's save or removal.
+  reportPick: null,
   refreshFooter: () => renderFooter(),
   // The dev-host "Clear all data". Clearing empties meta too, so the real
   // store gets back what boot gives it (schema version, a new Tracker ID);
   // without them the next backup fails its own check.
   async clearData() {
-    await app.store.clearAll();
-    if (!app.demo) {
+    if (app.demo) {
+      await clearDemo(app.store);
+    } else {
+      await app.store.clearAll();
       await migrateLocalData(app.realStore);
       await ensureDatasetId(app.realStore);
     }
@@ -417,7 +421,12 @@ async function boot() {
     return;
   }
   try {
-    if (await isDemoActive(app.realStore)) useDemo(await openDemoStore());
+    if (await isDemoActive(app.realStore)) {
+      const demoStore = await openDemoStore();
+      // A demo database from before a schema change is made again, not shown.
+      await refreshStaleDemo({ realStore: app.realStore, demoStore });
+      useDemo(demoStore);
+    }
   } catch (err) {
     // Fall back to real data, with no banner, which is the truth.
     console.error('Handstead: could not open demo storage:', err?.name ?? 'unknown error');

@@ -22,6 +22,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
   }
   const bathroomEvents = await app.store.getAll('bathroom_events');
   const handoffs = await app.store.getAll('handoffs');
+  const annotations = await app.store.getAll('annotations');
   // The Tracker ID is the device's, demo mode or not; demo files say DEMO_.
   const datasetId = await app.realStore.getMeta('dataset_id');
   const log = (await app.store.getMeta('export_log')) ?? [];
@@ -33,7 +34,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
 
   const lead = [
     title,
-    h('p', {}, 'Two spreadsheet files, one for Bathroom Check-Ins and one for Updates, that open in Excel, Numbers or Google Sheets. No passphrase is needed to read them, so handle them like any paper record.'),
+    h('p', {}, 'Three spreadsheet files, for Bathroom Check-Ins, Updates and the notes pinned to dates, that open in Excel, Numbers or Google Sheets. No passphrase is needed to read them, so handle them like any paper record.'),
     h('dl', { class: 'facts' },
       h('dt', {}, 'Dates'), h('dd', {}, `${dayWords(from)} – ${dayWords(to)}, ${placeWords}`),
       h('dt', {}, 'Last export'), h('dd', {}, through ? `Exported through ${dayWords(through)}` : 'No exports yet')),
@@ -71,7 +72,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
   async function save() {
     const voided = includeVoided.checked;
     const built = buildCsvExport({
-      bathroomEvents, handoffs, datasetId, siteLabels: app.settings.site_labels,
+      bathroomEvents, handoffs, annotations, datasetId, siteLabels: app.settings.site_labels,
       ...window, includeVoided: voided, demo: app.demo,
     });
     const files = built.files.map((file) => new File([file.text], file.filename, { type: 'text/csv' }));
@@ -97,7 +98,7 @@ export async function renderExport(app, { from, to, site = null } = {}) {
       fail('The files were saved, but the export wasn\'t added to the history.');
       return;
     }
-    note(`✓ Saved ${built.files.map((file) => file.filename).join(' and ')}`);
+    note(`✓ Saved ${built.files.map((file) => file.filename).join(', ')}`);
   }
 
   update();

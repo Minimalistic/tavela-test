@@ -40,6 +40,7 @@ export async function readLocal(store) {
     datasetId: await store.getMeta('dataset_id'),
     bathroom_events: await store.getAll('bathroom_events'),
     handoffs: await store.getAll('handoffs'),
+    annotations: await store.getAll('annotations'),
   };
 }
 
@@ -54,6 +55,7 @@ export async function createBackup(store, passphrase, now = new Date()) {
       dataset_id: local.datasetId,
       bathroom_events: local.bathroom_events,
       handoffs: local.handoffs,
+      annotations: local.annotations,
     },
     passphrase,
     createdAt: toOffsetIso(now),
@@ -104,26 +106,38 @@ function mergeStore(localRecords, incomingRecords, counts, conflicts) {
   return writes;
 }
 
-// local: { datasetId, bathroom_events, handoffs } from this device.
-// mode is 'replace' (this device has no entries), 'merge' (same tracker), or
-// 'mismatch' (a different tracker: merging is blocked, replace only).
+// local: { datasetId, bathroom_events, handoffs, annotations } from this
+// device. mode is 'replace' (this device has no entries and no notes),
+// 'merge' (same tracker), or 'mismatch' (a different tracker: merging is
+// blocked, replace only). Notes (annotations) merge by the entries' rules and
+// are counted apart, in noteCounts, so the entry counts mean what they did.
+// A merge never deletes a note.
 export function planRestore(local, data) {
   const incomingTotal = data.bathroom_events.length + data.handoffs.length;
   const localTotal = local.bathroom_events.length + local.handoffs.length;
   const counts = { new: 0, duplicate: 0, updated: 0, conflicting: 0 };
-  const base = { datasetId: data.dataset_id, localDatasetId: local.datasetId, localTotal, incomingTotal, data };
-  if (localTotal === 0) {
-    return { ...base, mode: 'replace', counts: { ...counts, new: incomingTotal }, conflicts: [], writes: null };
+  const noteCounts = { new: 0, duplicate: 0, updated: 0, conflicting: 0 };
+  const base = {
+    datasetId: data.dataset_id, localDatasetId: local.datasetId, localTotal, incomingTotal,
+    localNotes: local.annotations.length, incomingNotes: data.annotations.length, data,
+  };
+  if (localTotal + local.annotations.length === 0) {
+    return {
+      ...base, mode: 'replace', counts: { ...counts, new: incomingTotal },
+      noteCounts: { ...noteCounts, new: data.annotations.length }, conflicts: [], writes: null,
+    };
   }
   if (local.datasetId !== data.dataset_id) {
-    return { ...base, mode: 'mismatch', counts, conflicts: [], writes: null };
+    return { ...base, mode: 'mismatch', counts, noteCounts, conflicts: [], writes: null };
   }
   const conflicts = [];
   const writes = {
     bathroom_events: mergeStore(local.bathroom_events, data.bathroom_events, counts, conflicts),
     handoffs: mergeStore(local.handoffs, data.handoffs, counts, conflicts),
+    // Kept notes aren't listed with the entry conflicts; the count says it.
+    annotations: mergeStore(local.annotations, data.annotations, noteCounts, []),
   };
-  return { ...base, mode: 'merge', counts, conflicts, writes };
+  return { ...base, mode: 'merge', counts, noteCounts, conflicts, writes };
 }
 
 // how is 'merge' or 'replace'. Replacing another tracker's data needs its
@@ -141,8 +155,9 @@ export async function applyRestore(store, plan, { how, confirmation = '' }) {
   // Never act on a stale preview: if this device's entries changed since it was
   // shown (another window), stop and ask for a fresh one.
   const fresh = planRestore(await readLocal(store), plan.data);
-  if (fresh.mode !== plan.mode || fresh.localTotal !== plan.localTotal
+  if (fresh.mode !== plan.mode || fresh.localTotal !== plan.localTotal || fresh.localNotes !== plan.localNotes
     || JSON.stringify(fresh.counts) !== JSON.stringify(plan.counts)
+    || JSON.stringify(fresh.noteCounts) !== JSON.stringify(plan.noteCounts)
     || JSON.stringify(fresh.writes) !== JSON.stringify(plan.writes)) {
     return { ok: false, message: CHANGED_SINCE_PREVIEW };
   }
@@ -152,6 +167,7 @@ export async function applyRestore(store, plan, { how, confirmation = '' }) {
       replace: true,
       bathroom_events: plan.data.bathroom_events,
       handoffs: plan.data.handoffs,
+      annotations: plan.data.annotations,
       meta: { dataset_id: plan.data.dataset_id, schema_version: plan.data.schema_version },
     };
   try {

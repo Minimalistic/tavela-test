@@ -4,6 +4,7 @@ import { timelineRows } from '../charts.js';
 import { rowDrawing, dayCenter, dayAt, shortDate } from '../chart-draw.js';
 import { dayDetail, dayFacts, NONE } from '../day-detail.js';
 import { localDate } from '../time.js';
+import { annotationMarks, annotationsOnDay, annotationLine, annotationDates } from '../annotations.js';
 import { createDayTab } from './day-tab.js';
 
 // "When": one timeline, a thin row per series on one date axis, drawn at the
@@ -23,9 +24,39 @@ export const chevron = () => h('span', { class: 'chev', 'aria-hidden': 'true' },
 // Letter and A4 at the browser's default margins.
 export const PRINT_WIDTH = 640;
 
-export function timelineCard(counts, openDay, openMatch) {
+// notes: the notes pinned to dates (annotations) that touch the window. Each
+// marks a "Notes" lane above the rows, a diamond for a day or a bracket for a
+// range, with a dashed line down through every row. Shape and the lane's
+// label carry it, never colour; the words are in the picked day and the list.
+// Marks are placed in percentages, so they hold on any width and on paper.
+function notesLane(notes, days) {
+  const n = days.length;
+  const lane = h('div', { class: 'tl-notes', 'aria-hidden': 'true' }, h('span', { class: 'tl-notes-label' }, 'Notes'));
+  const lines = [];
+  const place = (element, x, w = null) => {
+    element.style.setProperty('--x', `${x}%`);
+    if (w !== null) element.style.setProperty('--w', `${w}%`);
+    return element;
+  };
+  for (const mark of annotationMarks(notes, days)) {
+    const left = (mark.from / n) * 100;
+    const width = ((mark.to - mark.from + 1) / n) * 100;
+    if (mark.range) {
+      const open = `${mark.openStart ? ' open-start' : ''}${mark.openEnd ? ' open-end' : ''}`;
+      lane.append(place(h('i', { class: `tl-note-range${open}` }), left, width));
+      lines.push(place(h('i', { class: `tl-note-span${open}`, 'aria-hidden': 'true' }), left, width));
+    } else {
+      lane.append(place(h('i', { class: 'tl-note-day' }), left + width / 2));
+      lines.push(place(h('i', { class: 'tl-note-line', 'aria-hidden': 'true' }), left + width / 2));
+    }
+  }
+  return lines.length ? { lane, lines } : { lane: null, lines: [] };
+}
+
+export function timelineCard(counts, openDay, openMatch, { notes = [], startDay = null } = {}) {
   const { days } = counts.window;
   const n = days.length;
+  const marks = notesLane(notes, days);
   const rows = timelineRows(counts);
   const moreLabel = `+ ${plural(rows.filter((row) => row.more).length, 'more row')}`;
   const tracks = rows.map((row) => {
@@ -47,7 +78,8 @@ export function timelineCard(counts, openDay, openMatch) {
   const links = h('div', { class: 'tl-links' }, tracks.map((track) => track.link));
   const band = h('div', { class: 'tl-band', 'aria-hidden': 'true' });
   const cursor = h('div', { class: 'tl-cursor', 'aria-hidden': 'true' });
-  let index = n - 1;
+  // Today on arrival; the day that was picked when a note changed under it.
+  let index = days.includes(startDay) ? days.indexOf(startDay) : n - 1;
   const frame = h('div', {
     class: 'timeline', tabindex: '0', role: 'slider', 'aria-label': 'Timeline, day by day',
     'aria-valuemin': '1', 'aria-valuemax': String(n),
@@ -62,7 +94,7 @@ export function timelineCard(counts, openDay, openMatch) {
       event.preventDefault();
       select(jump ?? index + step);
     },
-  }, tracks.map((track) => track.element), band, cursor);
+  }, marks.lane, tracks.map((track) => track.element), marks.lines, band, cursor);
   const axis = h('div', { class: 'tl-axis', 'aria-hidden': 'true' });
   const tab = createDayTab({ surface: frame, count: n, select });
   const more = h('button', {
@@ -134,29 +166,37 @@ export function timelineCard(counts, openDay, openMatch) {
     index = Math.max(0, Math.min(n - 1, next));
     const day = days[index];
     const { title, lines } = dayDetail(counts, day);
+    const dayNotes = annotationsOnDay(notes, day);
     const records = counts.entries.filter((record) => localDate(record.occurred_at) === day).length;
     frame.setAttribute('aria-valuenow', String(index + 1));
-    frame.setAttribute('aria-valuetext', `${title}. ${lines.join(' ')}`);
+    // A marked day names its note first, before the counts.
+    frame.setAttribute('aria-valuetext', `${title}. ${[...dayNotes.map(annotationLine), ...lines].join(' ')}`);
     detail.replaceChildren(
       h('div', { class: 'day-head' },
         h('h3', {}, title),
         h('button', { type: 'button', class: 'link', onclick: () => openDay(day) },
           plural(records, 'record', 'records'), h('span', { 'aria-hidden': 'true' }, ' ›'))),
-      h('dl', { class: 'day-facts' }, dayFacts(counts, day).map(({ area, label, value, note }) =>
-        h('div', { class: `fact area-${area}` },
-          h('dt', {}, label),
-          value === NONE
-            ? h('dd', { class: 'none' }, h('span', { 'aria-hidden': 'true' }, NONE), h('span', { class: 'visually-hidden' }, 'none recorded'))
-            : h('dd', {}, value, note ? h('small', {}, ` · ${note}`) : null)))));
+      h('dl', { class: 'day-facts' },
+        dayNotes.map((note) => h('div', { class: 'fact note-fact' },
+          h('dt', {}, note.date_to === null ? 'Note' : `Note · ${annotationDates(note)}`),
+          h('dd', {}, note.text, note.initials ? h('small', {}, ` · ${note.initials}`) : null))),
+        dayFacts(counts, day).map(({ area, label, value, note }) =>
+          h('div', { class: `fact area-${area}` },
+            h('dt', {}, label),
+            value === NONE
+              ? h('dd', { class: 'none' }, h('span', { 'aria-hidden': 'true' }, NONE), h('span', { class: 'visually-hidden' }, 'none recorded'))
+              : h('dd', {}, value, note ? h('small', {}, ` · ${note}`) : null)))));
     placeCursor();
   }
 
   select(index);
   // Draws once the card is on the page, and again whenever its width changes.
   new ResizeObserver(draw).observe(frame);
-  const card = h('section', { class: 'chart-card timeline-card', 'aria-labelledby': 'when-title' },
+  // Not named regions (here or the other Reports cards): iPhone VoiceOver
+  // would say the name for the region and again for the heading inside it.
+  const card = h('div', { class: 'chart-card timeline-card' },
     h('div', { class: 'card-head' },
-      h('h2', { id: 'when-title', class: 'chart-title' }, 'When'),
+      h('h2', { class: 'chart-title' }, 'When'),
       h('p', { class: 'hint' }, 'Tap a day, or drag the tab.')),
     h('div', { class: 'timeline-wrap' }, frame, links), axis, tab.track, more, detail);
   // Reports calls this around printing: every row, drawn for the page; then
@@ -166,5 +206,6 @@ export function timelineCard(counts, openDay, openMatch) {
     showMore(on || more.getAttribute('aria-expanded') === 'true');
     draw();
   };
+  card.pickedDay = () => days[index];
   return card;
 }

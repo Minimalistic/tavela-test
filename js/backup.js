@@ -17,7 +17,7 @@ export const ENVELOPE_VERSION = 1;
 // The app's version (DECISIONS "Versions"): semver, bumped when something
 // ships to testers, never per edit. Shown in the footer and stamped on
 // backups; sw.js and package.json match it (tests check both).
-export const APP_VERSION = '0.8.0';
+export const APP_VERSION = '0.9.0';
 export const KDF_ITERATIONS = 600_000;
 // Upper bound so a hostile header can't make the device grind for minutes.
 const MAX_ITERATIONS = 10_000_000;
@@ -92,8 +92,10 @@ function headerBytes(header) {
   ]));
 }
 
-// data: { schema_version, dataset_id, bathroom_events, handoffs }. Returns the
-// file's text.
+// data: { schema_version, dataset_id, bathroom_events, handoffs, annotations }.
+// Returns the file's text. The header counts entries and Updates only: its
+// fields are bound into the encryption, so adding a notes count would change
+// how version-1 files open. Notes are covered by the payload checksum.
 export async function encryptBackup({ data, passphrase, createdAt, iterations = KDF_ITERATIONS }) {
   const plaintext = new TextEncoder().encode(JSON.stringify(data));
   const salt = crypto.getRandomValues(new Uint8Array(16));

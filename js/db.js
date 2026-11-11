@@ -1,18 +1,23 @@
 // IndexedDB wrapper. Every write resolves only on transaction complete with
 // strict durability, which is what lets the UI say "Saved".
 
-const DB_VERSION = 1;
+// 2 added the annotations store (schema version 2, notes pinned to dates).
+const DB_VERSION = 2;
+const STORES = [['bathroom_events', 'id'], ['handoffs', 'id'], ['annotations', 'id'], ['meta', 'key']];
 
 // Named after the app (DECISIONS "Storage names"). Renaming it leaves every
 // device's entries behind in the old database, so only before real use.
 export function openDb(name = 'handstead') {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, DB_VERSION);
+    // A new database gets every store; an older one gets only what it lacks,
+    // and its entries are not touched. The upgrade is one transaction: if it
+    // fails, the database stays at its old version, as it was.
     request.onupgradeneeded = () => {
       const db = request.result;
-      db.createObjectStore('bathroom_events', { keyPath: 'id' });
-      db.createObjectStore('handoffs', { keyPath: 'id' });
-      db.createObjectStore('meta', { keyPath: 'key' });
+      for (const [store, keyPath] of STORES) {
+        if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -108,20 +113,34 @@ export function createStore(firstDb, reopen = null) {
         return finish(tx);
       });
     },
+    // One note gone, for good. Notes only: entries and Updates are voided,
+    // never deleted, so there is no general delete.
+    deleteAnnotation(id) {
+      return run((conn) => {
+        const tx = conn.transaction('annotations', 'readwrite', { durability: 'strict' });
+        tx.objectStore('annotations').delete(id);
+        return finish(tx);
+      });
+    },
     // Restore and migrations: every record and meta change in one transaction,
     // so a failure partway (a full disk, a bad record) leaves nothing changed.
-    // replace clears both record stores first; other meta keys are kept.
-    writeAll({ replace, bathroom_events: events, handoffs, meta }) {
+    // replace clears the entries, Updates and notes first; other meta keys
+    // are kept.
+    writeAll({ replace, bathroom_events: events, handoffs, annotations, meta }) {
+      // A replace that forgot the notes would silently delete them.
+      if (replace && !Array.isArray(annotations)) return Promise.reject(new Error('writeAll: replace needs annotations'));
       return run((conn) => {
-        const tx = conn.transaction(['bathroom_events', 'handoffs', 'meta'], 'readwrite', { durability: 'strict' });
+        const tx = conn.transaction(['bathroom_events', 'handoffs', 'annotations', 'meta'], 'readwrite', { durability: 'strict' });
         const done = finish(tx);
         try {
           if (replace) {
             tx.objectStore('bathroom_events').clear();
             tx.objectStore('handoffs').clear();
+            tx.objectStore('annotations').clear();
           }
           for (const record of events) tx.objectStore('bathroom_events').put(record);
           for (const record of handoffs) tx.objectStore('handoffs').put(record);
+          for (const record of annotations ?? []) tx.objectStore('annotations').put(record);
           for (const [key, value] of Object.entries(meta)) tx.objectStore('meta').put({ key, value });
         } catch (err) {
           // put() throws synchronously on a bad record; abort undoes the clear.

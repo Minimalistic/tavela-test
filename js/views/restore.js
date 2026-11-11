@@ -8,6 +8,9 @@ import { phraseFor, trackerFromTyped } from '../tracker-phrase.js';
 import { passphraseInput, showPassphraseToggle, trackerFact } from './backup.js';
 
 const entries = (n) => plural(n, 'entry', 'entries');
+const notes = (n) => plural(n, 'note', 'notes');
+// "12 entries and 6 notes"; notes are named only when there are some.
+const entriesAndNotes = (e, n) => (n === 0 ? entries(e) : e === 0 ? notes(n) : `${entries(e)} and ${notes(n)}`);
 
 const named = (id) => (phraseFor(id) ? `${phraseFor(id)} (${id})` : id);
 
@@ -18,7 +21,8 @@ function summary(header, data) {
     h('dt', {}, 'App version'), h('dd', {}, header.app_version),
     h('dt', {}, 'Data version'), h('dd', {}, String(header.schema_version)),
     h('dt', {}, 'Bathroom Check-Ins'), h('dd', {}, String(data.bathroom_events.length)),
-    h('dt', {}, 'Updates'), h('dd', {}, String(data.handoffs.length)));
+    h('dt', {}, 'Updates'), h('dd', {}, String(data.handoffs.length)),
+    h('dt', {}, 'Notes on dates'), h('dd', {}, String(data.annotations.length)));
 }
 
 // Verify Backup and Restore share the open step (SPEC §13.4: verify never
@@ -88,18 +92,18 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
     const now = await readLocal(app.store);
     result.replaceChildren(
       h('h2', {}, '✓ Restored'),
-      h('p', {}, `This device now has ${entries(now.bathroom_events.length + now.handoffs.length)}.`),
+      h('p', {}, `This device now has ${entriesAndNotes(now.bathroom_events.length + now.handoffs.length, now.annotations.length)}.`),
       h('div', { class: 'ask-buttons start' },
         h('button', { type: 'button', class: 'btn primary', onclick: () => app.show('records') }, 'Go to Records')));
   }
 
   function preview(plan) {
     if (plan.mode === 'replace') {
-      const button = h('button', { type: 'button', class: 'btn primary big' }, `Restore ${entries(plan.incomingTotal)}`);
+      const button = h('button', { type: 'button', class: 'btn primary big' }, `Restore ${entriesAndNotes(plan.incomingTotal, plan.incomingNotes)}`);
       button.addEventListener('click', () => restore(plan, 'replace', '', button));
       return h('div', { class: 'preview' },
         h('h2', {}, 'What will happen'),
-        h('p', {}, 'This device has no entries, so everything in the backup is added.'),
+        h('p', {}, 'This device has no entries or notes, so everything in the backup is added.'),
         button);
     }
 
@@ -112,7 +116,7 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
         h('h2', {}, `This backup belongs to a different tracker. Restoring would mix two people's records.`),
         h('p', {}, `This backup is ${named(plan.datasetId)}. This device is ${named(plan.localDatasetId)}.`),
         h('p', {}, 'Merging is blocked. You can replace everything on this device with this backup instead.'),
-        h('p', {}, h('strong', {}, `The ${entries(plan.localTotal)} on this device would be deleted.`),
+        h('p', {}, h('strong', {}, `The ${entriesAndNotes(plan.localTotal, plan.localNotes)} on this device would be deleted.`),
           ' Make a backup of this device first if they might be needed.'),
         h('label', { for: 'f-confirm' }, phraseFor(plan.datasetId)
           ? `To replace, type ${phraseFor(plan.datasetId)} (or ${plan.datasetId})`
@@ -121,24 +125,31 @@ export function renderRestore(app, { verifyOnly = false } = {}) {
         h('div', { class: 'detail-actions' }, button));
     }
 
-    const { counts, conflicts, writes } = plan;
-    const changes = writes.bathroom_events.length + writes.handoffs.length;
+    const { counts, noteCounts, conflicts, writes } = plan;
+    const changes = writes.bathroom_events.length + writes.handoffs.length + writes.annotations.length;
+    // Notes are counted apart from entries, and only when either side has any.
+    const countList = (c) => h('ul', { class: 'preview-counts' },
+      h('li', {}, h('strong', {}, String(c.new)), ' new: will be added'),
+      h('li', {}, h('strong', {}, String(c.duplicate)), ' already on this device: no change'),
+      h('li', {}, h('strong', {}, String(c.updated)), ' newer in the backup: this device\'s copy will be updated'),
+      h('li', {}, h('strong', {}, String(c.conflicting)), ' changed more recently on this device: this device\'s copy is kept'));
+    const showNotes = plan.incomingNotes + plan.localNotes > 0;
     const button = h('button', { type: 'button', class: 'btn primary big' }, 'Restore');
     button.addEventListener('click', () => restore(plan, 'merge', '', button));
     return h('div', { class: 'preview' },
       h('h2', {}, 'What will happen'),
-      h('ul', { class: 'preview-counts' },
-        h('li', {}, h('strong', {}, String(counts.new)), ' new: will be added'),
-        h('li', {}, h('strong', {}, String(counts.duplicate)), ' already on this device: no change'),
-        h('li', {}, h('strong', {}, String(counts.updated)), ' newer in the backup: this device\'s copy will be updated'),
-        h('li', {}, h('strong', {}, String(counts.conflicting)), ' changed more recently on this device: this device\'s copy is kept')),
+      showNotes ? h('h3', {}, 'Entries') : null,
+      countList(counts),
       conflicts.length > 0
         ? h('div', {},
           h('p', {}, 'Kept as they are on this device (a void from either copy still applies):'),
           h('ul', { class: 'conflict-list' }, conflicts.map((record) =>
             h('li', {}, `${entryTitle(record)} · ${formatDateTime(record.occurred_at)}`))))
         : null,
-      h('p', {}, 'Entries on this device that aren\'t in the backup are left as they are.'),
+      showNotes ? [h('h3', {}, 'Notes on dates'), countList(noteCounts)] : null,
+      h('p', {}, showNotes
+        ? 'Entries and notes on this device that aren\'t in the backup are left as they are.'
+        : 'Entries on this device that aren\'t in the backup are left as they are.'),
       changes > 0 ? button : h('p', { class: 'saved-inline' }, 'Nothing to restore: this device already has everything in this backup.'));
   }
 

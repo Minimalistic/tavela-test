@@ -7,7 +7,7 @@
 // until every Handstead window is closed. Test builds on dev hosts take over at
 // once on the page's 'skip-waiting' message (DECISIONS "Test builds update
 // themselves"). The gated, backup-first update flow (SPEC §14) is still to come.
-const VERSION = '0.8.0+9cc25c2';
+const VERSION = '0.9.0+06d2a8d';
 const CACHE = `handstead-${VERSION}`;
 
 const SHELL = [
@@ -44,6 +44,7 @@ const SHELL = [
   './js/backup-log.js',
   './js/csv-export.js',
   './js/export-log.js',
+  './js/annotations.js',
   './js/storage-risk.js',
   './js/text-size.js',
   './js/words.js',
@@ -69,6 +70,7 @@ const SHELL = [
   './js/views/backup.js',
   './js/views/restore.js',
   './js/views/export.js',
+  './js/views/notes.js',
   './icons/icon.svg',
   './icons/icon-mono.svg',
   './icons/icon-180.png',

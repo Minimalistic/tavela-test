@@ -960,7 +960,9 @@ input[type=file] { font: inherit; min-height: var(--tap); }
    each segment filled from the bottom to its share; then label, bar, count. */
 .kind + .kind { margin-top: 18px; }
 .kind h3 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; margin: 0 0 8px; font-size: 1rem; }
-.kind h3 span { font-weight: 500; font-size: 0.9rem; color: var(--ink-soft); }
+.kind h3 span, .kind-head > span { font-weight: 500; font-size: 0.9rem; color: var(--ink-soft); }
+.kind-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; margin: 0 0 8px; }
+.kind-head h3 { margin: 0; }
 .kind-bristol { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 3px; list-style: none; margin: 0; padding: 0; }
 .kind-seg { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .kind-seg-bar { position: relative; display: grid; place-items: center; width: 100%; height: 44px; overflow: hidden; border-radius: 6px; background: var(--area-tint); color: var(--area); font-weight: 700; }
@@ -1084,6 +1086,61 @@ button.glance-tile:focus-visible, button.kind-row:focus-visible, button.kind-seg
 .fact dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 700; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .fact dd small { font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
 .fact dd.none { color: var(--ink-soft); font-weight: 500; }
+/* A note pinned to the picked day leads the boxes, full width. */
+.fact.note-fact { grid-column: 1 / -1; border-left-color: var(--ink); }
+.fact.note-fact dd { font-size: 1.05rem; font-weight: 600; font-variant-numeric: normal; }
+
+/* Notes pinned to dates (views/timeline.js notesLane, views/notes.js). A lane
+   above the rows: a diamond for a day, a bracket for a range, each with a
+   dashed line down through every row. Ink, not an area colour: the shapes
+   and the lane's label carry it. Placed in percentages (CSSOM), so the marks
+   hold at any width and on paper. */
+.tl-notes { position: relative; height: 40px; }
+.tl-notes + .track { border-top: 0; }
+.tl-notes-label { position: absolute; left: 0; top: 0; font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
+.tl-note-day {
+  position: absolute; top: 22px; left: var(--x); translate: -50% 0; z-index: 1;
+  box-sizing: content-box; width: 11px; height: 11px; rotate: 45deg;
+  background: var(--ink); border: 2px solid var(--paper);
+}
+.tl-note-range {
+  position: absolute; top: 25px; left: calc(var(--x) + 2px); width: calc(var(--w) - 4px); height: 10px;
+  box-sizing: border-box; border: 2.5px solid var(--ink); border-bottom: 0; border-radius: 3px 3px 0 0;
+}
+.tl-note-line, .tl-note-span { position: absolute; bottom: 0; pointer-events: none; opacity: 0.45; }
+.tl-note-line { top: 32px; left: var(--x); width: 0; border-left: 2px dashed var(--ink); translate: -1px 0; }
+.tl-note-span {
+  top: 35px; left: calc(var(--x) + 2px); width: calc(var(--w) - 4px);
+  box-sizing: border-box; border-inline: 2px dashed var(--ink);
+}
+/* A range that runs past the window is left open on that side. */
+:is(.tl-note-range, .tl-note-span).open-start { border-left: 0; border-top-left-radius: 0; }
+:is(.tl-note-range, .tl-note-span).open-end { border-right: 0; border-top-right-radius: 0; }
+
+.notes-card .card-head { align-items: center; }
+.notes-list { list-style: none; margin: 0; padding: 0; }
+.notes-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.note-when { font-size: 0.85rem; font-weight: 700; color: var(--ink-soft); }
+.note-when::before { content: ''; display: inline-block; width: 8px; height: 8px; rotate: 45deg; background: var(--ink); margin-right: 8px; }
+.note-text { grid-column: 1; margin: 0; font-size: 1.05rem; }
+.note-by { color: var(--ink-soft); font-size: 0.85rem; }
+.note-acts { grid-row: 1 / span 2; grid-column: 2; align-self: center; display: flex; gap: 10px; }
+.notes-none { margin: 0; }
+.big-text .notes-list li { grid-template-columns: minmax(0, 1fr); }
+.big-text .note-acts { grid-row: auto; grid-column: 1; }
+
+/* The add and edit sheet: the Check-In's sheet (dialog.sheet), holding a
+   short form. It scrolls inside itself when a keyboard leaves little room. */
+.note-form { max-height: calc(100dvh - var(--keyboard, 0px) - 24px); overflow-y: auto; }
+.note-form label { display: block; font-weight: 700; margin: 12px 0 6px; }
+.note-optional { font-weight: 500; color: var(--ink-soft); }
+.note-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; align-items: end; }
+.note-field-initials input { max-width: 160px; }
+.note-error { margin: 4px 0 0; color: var(--danger); font-weight: 600; font-size: 0.95rem; }
+.note-error:empty { display: none; }
+.note-form [aria-invalid=true] { border-color: var(--danger); }
+@media (max-width: 479px) { .note-days { grid-template-columns: minmax(0, 1fr); } }
+.big-text .note-days { grid-template-columns: minmax(0, 1fr); }
 
 /* Ordered answers as one bar (fields.js scaleGroup). Segments share the
    tiles' pressed look; the bar never changes shape. pan-y lets the page
@@ -1184,4 +1241,7 @@ button.glance-tile:focus-visible, button.kind-row:focus-visible, button.kind-seg
   /* Matches PRINT_WIDTH in views/timeline.js, which draws the rows for it. */
   .timeline-wrap, .tl-axis { width: 640px; max-width: 100%; }
   .timeline { cursor: auto; }
+  /* Notes: the markers and the list, without their controls; no empty card. */
+  .notes-card .btn, .note-acts { display: none !important; }
+  .notes-card:has(.notes-none) { display: none; }
 }

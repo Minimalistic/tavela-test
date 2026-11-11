@@ -1,6 +1,7 @@
 // CSV export (docs/SPEC.md §12, ACCEPTANCE.md "CSV export"). Pure functions:
-// records in, file text out. Two files, one row per record, each coded answer
-// as its stable code and the words people read.
+// records in, file text out. Three files: Check-Ins and Updates, one row per
+// record, each coded answer as its stable code and the words people read; and
+// the notes pinned to dates.
 import {
   EVENTS, PAIN, URINE_CHANGE, URINE_DETAILS, BRISTOL, BM_AMOUNT, ATTEMPT_TARGET,
   BOWEL_CARE_STATUS, CONCERNS,
@@ -8,6 +9,7 @@ import {
 import { QUESTIONS, SUMMARY_TYPES, BEHAVIORS, BEHAVIOR_STATES } from './handoff.js';
 import { filterEntries } from './entries.js';
 import { localDate } from './time.js';
+import { touchesWindow } from './annotations.js';
 
 // Excel, Numbers and Sheets all read a leading `=`, `+`, `-` or `@` (and a
 // tab or return before one) as a formula. A note typed that way must stay
@@ -141,10 +143,28 @@ export function reportTitle({ datasetId, from, to, demo = false }) {
   return `${demo ? 'DEMO_' : ''}${datasetId}_report_${from}_to_${to}`;
 }
 
+// Notes pinned to dates (annotations): the ones touching the window, oldest
+// first. date_to is empty for a note on one day. Notes have no place, so the
+// place filter doesn't apply to them.
+export const ANNOTATION_HEADER = ['tracker_id', 'id', 'date_from', 'date_to', 'text', 'initials', 'created_at', 'updated_at'];
+
+export function annotationsCsv({ annotations, datasetId, from, to, demo = false }) {
+  const notes = annotations
+    .filter((note) => touchesWindow(note, from, to))
+    .sort((a, b) => a.date_from.localeCompare(b.date_from) || Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id));
+  return {
+    filename: csvFilename({ datasetId, kind: 'annotations', from, to, demo }),
+    rows: notes.length,
+    text: toCsv([ANNOTATION_HEADER, ...notes.map((note) =>
+      [datasetId, note.id, note.date_from, note.date_to, note.text, note.initials, note.created_at, note.updated_at])]),
+  };
+}
+
 // Returns { files: [{ filename, text, rows }], entries } for one window.
-// Both files are always made, so a team's folder has a matching pair even
-// when one kind had no entries (header only).
-export function buildCsvExport({ bathroomEvents, handoffs, datasetId, siteLabels, from, to, site = null, includeVoided = false, demo = false }) {
+// All three files are always made, so a team's folder has a matching set even
+// when one kind had nothing (header only). entries counts Check-Ins and
+// Updates, not notes.
+export function buildCsvExport({ bathroomEvents, handoffs, annotations, datasetId, siteLabels, from, to, site = null, includeVoided = false, demo = false }) {
   const ctx = { datasetId, siteLabels };
   const window = { from, to, site, includeVoided };
   const events = exportEntries(bathroomEvents, window);
@@ -156,6 +176,7 @@ export function buildCsvExport({ bathroomEvents, handoffs, datasetId, siteLabels
         text: toCsv([BATHROOM_HEADER, ...events.map((r) => bathroomRow(r, ctx))]) },
       { filename: csvFilename({ datasetId, kind: 'handoffs', from, to, demo }), rows: updates.length,
         text: toCsv([HANDOFF_HEADER, ...updates.map((r) => handoffRow(r, ctx))]) },
+      annotationsCsv({ annotations, datasetId, from, to, demo }),
     ],
   };
 }
